@@ -128,17 +128,14 @@ function renderTable() {
   if (!tableBody) return;
   tableBody.innerHTML = '';
   scans.forEach((scan, idx) => {
-    // Create wrapper for each row to contain both the row and delete button
-    const wrapper = document.createElement('div');
-    wrapper.className = 'row-wrapper';
-    wrapper.style.position = 'relative';
-    wrapper.style.overflow = 'hidden';
-    wrapper.style.background = 'transparent';
-    
-    // Create the table row
+    // Create the main table row (this will be the swipeable element)
     const tr = document.createElement('tr');
-    tr.className = 'swipeable-row';
+    tr.className = 'swipeable-row row-wrapper';
     tr.dataset.index = idx;
+    tr.style.position = 'relative';
+    tr.style.background = 'var(--card-bg)';
+    
+    // Add table cells with data
     tr.innerHTML = `
       <td>${idx + 1}</td>
       <td>${scan.storeName}</td>
@@ -148,14 +145,14 @@ function renderTable() {
       <td>${scan.lng ?? 'Not Found'}</td>
       <td>${scan.businessType}</td>`;
     
-    // Create delete button positioned behind the row
+    // Create delete button positioned absolutely relative to the row
     const deleteButton = document.createElement('div');
     deleteButton.className = 'delete-button';
     deleteButton.innerHTML = '🗑️ Delete';
-    deleteButton.dataset.index = idx; // Store index in data attribute as backup
-    // Let CSS handle all the styling - don't override with inline styles
-    deleteButton.style.position = 'absolute';
-    deleteButton.style.right = '-120px'; // Hidden by default
+    deleteButton.dataset.index = idx;
+    
+    // Add delete button as child of the row
+    tr.appendChild(deleteButton);
     
     // Add multiple event handlers to ensure it works
     const handleDelete = (e) => {
@@ -170,24 +167,11 @@ function renderTable() {
     deleteButton.addEventListener('click', handleDelete);
     deleteButton.addEventListener('touchend', handleDelete);
     
-    // Create table row container
-    const rowContainer = document.createElement('tr');
-    const cell = document.createElement('td');
-    cell.colSpan = 7;
-    cell.style.padding = '0';
-    cell.style.position = 'relative';
-    cell.style.overflow = 'hidden';
+    // Add swipe functionality to the table row itself
+    addSwipeToRow(tr, tr, deleteButton, idx);
     
-    // Assemble structure
-    wrapper.appendChild(deleteButton);
-    wrapper.appendChild(tr);
-    cell.appendChild(wrapper);
-    rowContainer.appendChild(cell);
-    
-    // Add swipe functionality
-    addSwipeToRow(tr, wrapper, deleteButton, idx);
-    
-    tableBody.appendChild(rowContainer);
+    // Append row to table
+    tableBody.appendChild(tr);
   });
 }
 
