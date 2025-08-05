@@ -68,26 +68,25 @@
   }
 
   .video-wrapper { 
-    flex: 1; 
+    flex: 1;
     position: relative; 
     background: #000;
     border-radius: 0 0 var(--border-radius-large) var(--border-radius-large);
     overflow: hidden;
     margin: 0 16px;
     box-shadow: var(--shadow);
-    min-height: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    height: calc(100vh - 300px);
+    min-height: 400px;
   }
   
   video { 
     width: 100%; 
     height: 100%; 
-    object-fit: fill; 
+    object-fit: cover; 
     background: #000;
     border-radius: inherit;
     display: block;
+    object-position: center;
   }
 
   .scan-btn {
@@ -393,6 +392,9 @@
     
     .video-wrapper {
       margin: 0 12px;
+      height: calc(100vh - 280px);
+      min-height: 350px;
+      max-height: 65vh;
     }
     
     header {
