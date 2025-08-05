@@ -380,6 +380,8 @@
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: grab;
     z-index: 2;
+    overflow: hidden; /* Prevent delete button from spilling over */
+    height: 56px; /* Fixed row height */
   }
   
   /* Apply striping to the swipeable rows */
@@ -408,7 +410,8 @@
     position: absolute !important;
     top: 0;
     right: -120px !important; /* Hidden by default */
-    bottom: 0;
+    height: 100%;
+    max-height: 56px; /* Match table row height */
     width: 120px;
     background: #ff4444;
     display: flex;
@@ -447,6 +450,8 @@
   .swipeable-row td {
     position: relative;
     z-index: 3;
+    height: 56px; /* Match row height */
+    vertical-align: middle; /* Center content vertically */
   }
 
   /* Mobile responsive optimizations */
@@ -503,6 +508,18 @@
       font-size: 11px;
     }
 
+    .swipeable-row {
+      height: 50px; /* Smaller height for mobile */
+    }
+
+    .swipeable-row td {
+      height: 50px;
+    }
+
+    .delete-button {
+      max-height: 50px;
+    }
+
     /* Mobile-specific fixed column widths */
     table { min-width: 650px; }
     th:nth-child(1), td:nth-child(1) { width: 40px; }   /* # */
@@ -533,6 +550,18 @@
     th, td {
       padding: 10px 6px;
       font-size: 12px;
+    }
+
+    .swipeable-row {
+      height: 48px; /* Even smaller height for extra small phones */
+    }
+
+    .swipeable-row td {
+      height: 48px;
+    }
+
+    .delete-button {
+      max-height: 48px;
     }
 
     /* Extra small phone fixed column widths */
