@@ -104,3 +104,87 @@
   th, td { border-bottom:1px solid #eee; padding:0.45rem 0.3rem; font-size:0.85rem; }
   th { text-align:left; color:#555; font-weight:600; }
   tbody tr:nth-child(odd) { background:#fafafa; }
+
+  /* Swipe-to-delete styles */
+  .swipeable-row {
+    position: relative;
+    transition: transform 0.3s ease;
+    cursor: grab;
+  }
+
+  .swipeable-row:active {
+    cursor: grabbing;
+  }
+
+  .swipeable-row.swiping {
+    transition: none;
+  }
+
+  /* Delete column and button */
+  .delete-cell {
+    width: 60px;
+    text-align: center;
+    padding: 0.2rem !important;
+  }
+
+  .delete-btn {
+    background: #ff4444;
+    border: none;
+    color: white;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .delete-btn:hover {
+    background: #cc3333;
+    transform: scale(1.1);
+  }
+
+  .delete-btn:active {
+    transform: scale(0.95);
+  }
+
+  /* Initially hide delete column - show on swipe or hover */
+  .delete-cell {
+    opacity: 0;
+    transform: translateX(20px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+  }
+
+  /* Show delete button on row hover (desktop) */
+  .swipeable-row:hover .delete-cell {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  /* Show delete button when swiped */
+  .swipeable-row.swiped .delete-cell {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+
+  /* Mobile-specific swipe indicators */
+  @media (max-width: 768px) {
+    .swipeable-row::after {
+      content: "← Swipe to delete";
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #999;
+      font-size: 0.7rem;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .swipeable-row:not(.swiped):not(:hover)::after {
+      opacity: 0.3;
+    }
+  }
