@@ -305,7 +305,7 @@
   .delete-button {
     position: absolute !important;
     top: 0;
-    right: -120px !important; /* Hidden by default, shows when row is swiped */
+    right: -120px !important; /* Hidden by default */
     bottom: 0;
     width: 120px;
     background: #ff4444;
@@ -316,13 +316,14 @@
     font-weight: 600;
     cursor: pointer;
     font-size: 14px;
-    z-index: 1; /* Lower than swipeable row */
+    z-index: 1;
     user-select: none;
     pointer-events: auto;
     transition: right 0.2s ease;
     border: none;
     outline: none;
     -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+    visibility: hidden; /* Extra hiding measure */
   }
 
   .delete-button:hover {
@@ -337,11 +338,13 @@
   /* Show delete button when row is swiped left */
   .swipeable-row[style*="translateX(-"] + .delete-button {
     right: 0px !important;
+    visibility: visible !important;
   }
 
   /* Alternative method: Show delete button when wrapper contains swiped row */
   .row-wrapper:has(.swipeable-row[style*="translateX(-"]) .delete-button {
     right: 0px !important;
+    visibility: visible !important;
   }
 
   /* Mobile-specific swipe hint */
