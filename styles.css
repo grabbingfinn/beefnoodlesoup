@@ -379,16 +379,15 @@
     position: relative;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: grab;
-    background: var(--card-bg);
     z-index: 2;
   }
   
   /* Apply striping to the swipeable rows */
-  .row-wrapper:nth-child(odd) .swipeable-row { 
+  .swipeable-row:nth-child(odd) { 
     background: rgba(0, 177, 79, 0.02);
   }
   
-  .row-wrapper:nth-child(even) .swipeable-row {
+  .swipeable-row:nth-child(even) {
     background: var(--card-bg);
   }
   
@@ -439,54 +438,15 @@
   }
 
   /* Show delete button when row is swiped left */
-  .swipeable-row[style*="translateX(-"] + .delete-button {
+  .swipeable-row[style*="translateX(-"] .delete-button {
     right: 0px !important;
     visibility: visible !important;
   }
 
-  /* Alternative method: Show delete button when wrapper contains swiped row */
-  .row-wrapper:has(.swipeable-row[style*="translateX(-"]) .delete-button {
-    right: 0px !important;
-    visibility: visible !important;
-  }
-
-  /* Mobile-specific swipe hint */
-  @media (max-width: 768px) {
-    .swipeable-row::before {
-      content: "← Swipe to delete";
-      position: absolute;
-      right: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-light);
-      font-size: 12px;
-      opacity: 0.4;
-      pointer-events: none;
-      z-index: 5;
-      font-weight: 500;
-    }
-
-    /* Hide hint when row is being swiped */
-    .swipeable-row.swiping::before {
-      opacity: 0;
-    }
-  }
-
-  /* Desktop hint */
-  @media (min-width: 769px) {
-    .swipeable-row:hover::before {
-      content: "Drag left to delete";
-      position: absolute;
-      right: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-light);
-      font-size: 12px;
-      opacity: 0.6;
-      pointer-events: none;
-      z-index: 5;
-      font-weight: 500;
-    }
+  /* Ensure proper table cell positioning */
+  .swipeable-row td {
+    position: relative;
+    z-index: 3;
   }
 
   /* Mobile responsive optimizations */
@@ -610,4 +570,24 @@
     .card {
       padding-bottom: env(safe-area-inset-bottom, 24px);
     }
-   
+    
+    table {
+      margin-bottom: env(safe-area-inset-bottom, 0);
+    }
+  }
+
+  /* Prevent text selection on buttons and interactive elements */
+  .scan-btn,
+  .btn,
+  .swipeable-row {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+  }
+
+  /* Enhanced visual feedback for touch */
+  .scan-btn:active,
+  .btn:active {
+    transform: scale(0.98);
+  }
