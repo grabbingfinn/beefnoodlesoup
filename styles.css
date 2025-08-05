@@ -223,6 +223,22 @@
     -webkit-overflow-scrolling: touch;
     margin: 0 -24px;
     padding: 0 24px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  @media (max-width: 480px) {
+    .table-container {
+      margin: 0 -20px;
+      padding: 0 20px;
+    }
+  }
+
+  @media (max-width: 320px) {
+    .table-container {
+      margin: 0 -16px;
+      padding: 0 16px;
+    }
   }
   
   .muted { 
@@ -308,11 +324,13 @@
 
   table { 
     width: 100%; 
+    min-width: 800px; /* Ensure minimum table width */
     border-collapse: collapse; 
     margin-top: 20px;
     border-radius: var(--border-radius-small);
     overflow: hidden;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    table-layout: fixed; /* Fixed layout for consistent column sizing */
   }
   
   th, td { 
@@ -325,14 +343,14 @@
     text-overflow: ellipsis;
   }
 
-  /* Column-specific widths */
-  th:nth-child(1), td:nth-child(1) { width: 8%; }   /* # */
-  th:nth-child(2), td:nth-child(2) { width: 20%; }  /* STORE NAME */
-  th:nth-child(3), td:nth-child(3) { width: 12%; }  /* UNIT */
-  th:nth-child(4), td:nth-child(4) { width: 25%; }  /* ADDRESS */
-  th:nth-child(5), td:nth-child(5) { width: 12%; min-width: 85px; }  /* LAT */
-  th:nth-child(6), td:nth-child(6) { width: 12%; min-width: 90px; }  /* LNG */
-  th:nth-child(7), td:nth-child(7) { width: 11%; }  /* TYPE */
+  /* Fixed column widths to prevent overlapping */
+  th:nth-child(1), td:nth-child(1) { width: 50px; }   /* # */
+  th:nth-child(2), td:nth-child(2) { width: 150px; }  /* STORE NAME */
+  th:nth-child(3), td:nth-child(3) { width: 80px; }   /* UNIT */
+  th:nth-child(4), td:nth-child(4) { width: 200px; }  /* ADDRESS */
+  th:nth-child(5), td:nth-child(5) { width: 100px; }  /* LAT */
+  th:nth-child(6), td:nth-child(6) { width: 100px; }  /* LNG */
+  th:nth-child(7), td:nth-child(7) { width: 120px; }  /* TYPE */
   
   th { 
     background: var(--bg-secondary);
@@ -525,14 +543,15 @@
       font-size: 11px;
     }
 
-    /* Mobile-specific column widths */
-    th:nth-child(1), td:nth-child(1) { width: 6%; }   /* # */
-    th:nth-child(2), td:nth-child(2) { width: 18%; }  /* STORE NAME */
-    th:nth-child(3), td:nth-child(3) { width: 10%; }  /* UNIT */
-    th:nth-child(4), td:nth-child(4) { width: 24%; }  /* ADDRESS */
-    th:nth-child(5), td:nth-child(5) { width: 15%; min-width: 75px; }  /* LAT */
-    th:nth-child(6), td:nth-child(6) { width: 15%; min-width: 80px; }  /* LNG */
-    th:nth-child(7), td:nth-child(7) { width: 12%; }  /* TYPE */
+    /* Mobile-specific fixed column widths */
+    table { min-width: 650px; }
+    th:nth-child(1), td:nth-child(1) { width: 40px; }   /* # */
+    th:nth-child(2), td:nth-child(2) { width: 120px; }  /* STORE NAME */
+    th:nth-child(3), td:nth-child(3) { width: 60px; }   /* UNIT */
+    th:nth-child(4), td:nth-child(4) { width: 160px; }  /* ADDRESS */
+    th:nth-child(5), td:nth-child(5) { width: 85px; }   /* LAT */
+    th:nth-child(6), td:nth-child(6) { width: 90px; }   /* LNG */
+    th:nth-child(7), td:nth-child(7) { width: 95px; }   /* TYPE */
   }
 
   /* Extra small phones */
@@ -556,14 +575,15 @@
       font-size: 12px;
     }
 
-    /* Extra small phone column widths */
-    th:nth-child(1), td:nth-child(1) { width: 5%; }   /* # */
-    th:nth-child(2), td:nth-child(2) { width: 16%; }  /* STORE NAME */
-    th:nth-child(3), td:nth-child(3) { width: 8%; }   /* UNIT */
-    th:nth-child(4), td:nth-child(4) { width: 22%; }  /* ADDRESS */
-    th:nth-child(5), td:nth-child(5) { width: 17%; min-width: 70px; }  /* LAT */  
-    th:nth-child(6), td:nth-child(6) { width: 17%; min-width: 75px; }  /* LNG */
-    th:nth-child(7), td:nth-child(7) { width: 15%; }  /* TYPE */
+    /* Extra small phone fixed column widths */
+    table { min-width: 550px; }
+    th:nth-child(1), td:nth-child(1) { width: 35px; }   /* # */
+    th:nth-child(2), td:nth-child(2) { width: 100px; }  /* STORE NAME */
+    th:nth-child(3), td:nth-child(3) { width: 50px; }   /* UNIT */
+    th:nth-child(4), td:nth-child(4) { width: 130px; }  /* ADDRESS */
+    th:nth-child(5), td:nth-child(5) { width: 75px; }   /* LAT */  
+    th:nth-child(6), td:nth-child(6) { width: 80px; }   /* LNG */
+    th:nth-child(7), td:nth-child(7) { width: 80px; }   /* TYPE */
   }
 
   /* Loading and animation improvements */
@@ -590,24 +610,4 @@
     .card {
       padding-bottom: env(safe-area-inset-bottom, 24px);
     }
-    
-    table {
-      margin-bottom: env(safe-area-inset-bottom, 0);
-    }
-  }
-
-  /* Prevent text selection on buttons and interactive elements */
-  .scan-btn,
-  .btn,
-  .swipeable-row {
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-  }
-
-  /* Enhanced visual feedback for touch */
-  .scan-btn:active,
-  .btn:active {
-    transform: scale(0.98);
-  }
+   
