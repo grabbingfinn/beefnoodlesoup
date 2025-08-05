@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Storefront Scanner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <img src="grab_logo.png" alt="Grab logo">
+    <span>Storefront Scanner</span>
+  </header>
+  <main>
+    <div class="video-wrapper">
+      <video id="camera" autoplay playsinline></video>
+      <div id="progressBar"><div id="progressFill"></div></div>
+      <button id="scanBtn" class="scan-btn">Scan</button>
+    </div>
+    <div class="card">
+      <div class="toolbar">
+        <button id="exportBtn" class="btn">Export CSV</button>
+        <button id="uploadBtn" class="btn">Upload Image</button>
+        <button id="clearBtn" class="btn">Clear</button>
+        <input type="file" id="imageInput" accept="image/*" style="display:none" />
+      </div>
+      <div class="search-toolbar">
+        <input type="text" id="storeSearchInput" placeholder="Search for store location..." />
+        <button id="searchLocationBtn" class="btn">Search Location</button>
+      </div>
+      <div id="status" class="muted"></div>
+      <table id="resultsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Store Name</th>
+            <th>Unit</th>
+            <th>Address</th>
+            <th>Lat</th>
+            <th>Lng</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- OCR Library -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <!-- Spell correction library -->
+  <script src="https://cdn.jsdelivr.net/npm/didyoumean2@3/dist/didyoumean2.min.js"></script>
+  <!-- App logic (ESM) -->
+  <script type="module" src="script.js"></script>
+</body>
+</html> 
