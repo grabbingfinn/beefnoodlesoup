@@ -66,6 +66,9 @@ const statusDiv = document.getElementById('status');
 const tableBody = document.querySelector('#resultsTable tbody');
 const progressBar = document.getElementById('progressBar');
 const progressFill = document.getElementById('progressFill');
+// --- NEW: Scanning overlay elements ---
+const scanningOverlay = document.getElementById('scanningOverlay');
+const scanningText = document.querySelector('.scanning-text');
 // --- NEW: Image upload elements ---
 const uploadBtn = document.getElementById('uploadBtn');
 const imageInput = document.getElementById('imageInput');
@@ -75,7 +78,40 @@ let scans = [];
 // Note: openaiApiKey is defined later, but we need it before using getOpenAIClient().
 // We will forward-declare it here and assign when loaded below.
 let openaiApiKey;
-let oneMapApiKey; // OneMap API key for authenticated endpoints
+let oneMapApiKey;
+
+// --- Scanning overlay helper functions ---
+function showScanningOverlay(text = 'Scanning...') {
+  if (scanningOverlay && scanningText) {
+    scanningText.textContent = text;
+    scanningOverlay.classList.add('show');
+  }
+}
+
+function hideScanningOverlay() {
+  if (scanningOverlay) {
+    scanningOverlay.classList.remove('show');
+  }
+}
+
+function showScanComplete() {
+  if (scanningText) {
+    scanningText.textContent = '✓ Done!';
+    // Hide the spinner when done
+    const spinner = document.querySelector('.spinner');
+    if (spinner) {
+      spinner.style.display = 'none';
+    }
+    // Hide overlay after 1.5 seconds
+    setTimeout(() => {
+      hideScanningOverlay();
+      // Reset spinner visibility for next scan
+      if (spinner) {
+        spinner.style.display = 'block';
+      }
+    }, 1500);
+  }
+} // OneMap API key for authenticated endpoints
 openaiApiKey = localStorage.getItem('openaiApiKey') || '';
 oneMapApiKey = localStorage.getItem('oneMapApiKey') || '';
 try {
@@ -722,6 +758,7 @@ initCamera();
 
 // --- Helper: run OCR + processing on any canvas source (camera or uploaded) ---
 async function performScanFromCanvas(canvas) {
+  showScanningOverlay('Scanning...');
   statusDiv.textContent = 'Scanning…';
   progressBar.style.display = 'block';
   progressFill.style.width = '0%';
@@ -731,6 +768,7 @@ async function performScanFromCanvas(canvas) {
   // Try Vision JSON extraction first
   let parsed = null;
   if (openaiApiKey) {
+    showScanningOverlay('Analyzing with AI...');
     statusDiv.textContent = 'Analyzing with GPT-4o…';
     parsed = await extractInfoVision(imageDataUrl);
     if (parsed) {
@@ -760,6 +798,7 @@ async function performScanFromCanvas(canvas) {
     const { text, confidence, lines } = result.data;
     console.log('OCR confidence', confidence);
 
+    showScanningOverlay('Processing text...');
     statusDiv.textContent = 'Processing…';
 
     parsed = await extractInfoGPT(text);
@@ -774,6 +813,7 @@ async function performScanFromCanvas(canvas) {
   // Try to search for the store location using OneMap API
   let storeLocation = null;
   if (parsed && parsed.storeName && parsed.storeName !== 'Not Found') {
+    showScanningOverlay('Finding location...');
     statusDiv.textContent = 'Finding store location…';
     storeLocation = await searchStoreLocation(parsed.storeName, geo.lat, geo.lng);
   }
@@ -806,6 +846,10 @@ async function performScanFromCanvas(canvas) {
   scans.push(info);
   saveScans();
   renderTable();
+  
+  // Show completion message
+  showScanComplete();
+  
   statusDiv.textContent = '';
   progressBar.style.display = 'none';
 }
@@ -817,6 +861,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
     return;
   }
 
+  showScanningOverlay('Capturing image...');
   statusDiv.textContent = 'Scanning…';
   progressBar.style.display = 'block';
   progressFill.style.width = '0%';
