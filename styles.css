@@ -265,7 +265,7 @@
   .row-wrapper {
     position: relative;
     overflow: hidden;
-    background: #ff4444; /* Red background shows behind swiped row */
+    background: transparent; /* No red background on wrapper - only on delete button */
   }
 
   .swipeable-row {
@@ -301,7 +301,7 @@
   .delete-button {
     position: absolute;
     top: 0;
-    right: 0; /* Always visible for testing - change to -120px to hide by default */
+    right: -120px; /* Hidden by default, shows when row is swiped */
     bottom: 0;
     width: 120px;
     background: #ff4444;
@@ -328,6 +328,16 @@
   .delete-button:active {
     background: #aa2222;
     transform: scale(0.98);
+  }
+
+  /* Show delete button when row is swiped left */
+  .swipeable-row[style*="translateX(-"] + .delete-button {
+    right: 0px !important;
+  }
+
+  /* Alternative method: Show delete button when wrapper contains swiped row */
+  .row-wrapper:has(.swipeable-row[style*="translateX(-"]) .delete-button {
+    right: 0px !important;
   }
 
   /* Mobile-specific swipe hint */
@@ -477,14 +487,4 @@
   .scan-btn,
   .btn,
   .swipeable-row {
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-  }
-
-  /* Enhanced visual feedback for touch */
-  .scan-btn:active,
-  .btn:active {
-    transform: scale(0.98);
-  }
+   
