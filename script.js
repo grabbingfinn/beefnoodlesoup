@@ -231,9 +231,18 @@ function addSwipeToRow(rowElement, wrapper, deleteButton, index) {
       rowElement.style.position = 'relative';
       rowElement.style.zIndex = '10';
       
+      // Move delete button proportionally into view
+      if (deleteButton) {
+        const buttonPosition = -120 + moveDistance;
+        deleteButton.style.right = `${Math.min(buttonPosition, 0)}px`;
+      }
+      
     } else {
       // Right swipe or no movement - reset
       rowElement.style.transform = 'translateX(0px)';
+      if (deleteButton) {
+        deleteButton.style.right = '-120px';
+      }
     }
     
     e.preventDefault();
@@ -252,6 +261,11 @@ function addSwipeToRow(rowElement, wrapper, deleteButton, index) {
       // Swipe completed - keep delete action visible
       rowElement.style.transform = `translateX(-${threshold}px)`;
       
+      // Explicitly move delete button into view
+      if (deleteButton) {
+        deleteButton.style.right = '0px';
+      }
+      
       console.log('Delete button revealed'); // Debug log
       
       // Add click listener to reset on tap outside
@@ -259,6 +273,10 @@ function addSwipeToRow(rowElement, wrapper, deleteButton, index) {
         if (!wrapper.contains(event.target)) {
           rowElement.style.transform = 'translateX(0px)';
           rowElement.style.zIndex = '';
+          // Hide delete button
+          if (deleteButton) {
+            deleteButton.style.right = '-120px';
+          }
           document.removeEventListener('click', resetSwipe);
           document.removeEventListener('touchstart', resetSwipe);
         }
@@ -274,6 +292,10 @@ function addSwipeToRow(rowElement, wrapper, deleteButton, index) {
       // Swipe not far enough - reset
       rowElement.style.transform = 'translateX(0px)';
       rowElement.style.zIndex = '';
+      // Hide delete button
+      if (deleteButton) {
+        deleteButton.style.right = '-120px';
+      }
     }
   }
 }
