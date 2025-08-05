@@ -115,6 +115,7 @@ function renderTable() {
     const deleteButton = document.createElement('div');
     deleteButton.className = 'delete-button';
     deleteButton.innerHTML = '🗑️ Delete';
+    deleteButton.dataset.index = idx; // Store index in data attribute as backup
     deleteButton.style.cssText = `
       position: absolute;
       top: 0;
@@ -129,17 +130,23 @@ function renderTable() {
       font-weight: 600;
       cursor: pointer;
       font-size: 14px;
-      z-index: 1;
+      z-index: 5;
       user-select: none;
+      pointer-events: auto;
     `;
     
-    // Add click handler to delete button
-    deleteButton.addEventListener('click', (e) => {
+    // Add multiple event handlers to ensure it works
+    const handleDelete = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      console.log('Delete button clicked for index:', idx);
-      deleteRow(idx);
-    });
+      const index = parseInt(e.target.dataset.index) || idx;
+      console.log('Delete button clicked for index:', index);
+      console.log('Current scans array:', scans);
+      deleteRow(index);
+    };
+    
+    deleteButton.addEventListener('click', handleDelete);
+    deleteButton.addEventListener('touchend', handleDelete);
     
     // Create table row container
     const rowContainer = document.createElement('tr');
