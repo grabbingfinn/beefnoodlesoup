@@ -119,7 +119,7 @@ function renderTable() {
     deleteButton.style.cssText = `
       position: absolute;
       top: 0;
-      right: 0;
+      right: -120px;
       bottom: 0;
       width: 120px;
       background: #ff4444;
