@@ -163,6 +163,8 @@ async function performManualStoreSearch() {
   const storeLocation = await searchStoreLocation(searchQuery, geo.lat, geo.lng);
   
   if (storeLocation) {
+    console.log('Manual search found location:', storeLocation);
+    
     // Add the found location to scans
     const info = {
       storeName: searchQuery,
@@ -184,6 +186,7 @@ async function performManualStoreSearch() {
       statusDiv.textContent = '';
     }, 3000);
   } else {
+    console.log('Manual search found no results for:', searchQuery);
     statusDiv.textContent = `No location found for: ${searchQuery}`;
     setTimeout(() => {
       statusDiv.textContent = '';
@@ -333,17 +336,58 @@ async function searchStoreLocation(storeName, currentLat = null, currentLng = nu
       }
     }
 
+    // Debug: Log the raw response to understand the structure
+    console.log('OneMap search response for', storeName, ':', bestMatch);
+
     // Extract coordinates and address from the best match
     const lat = bestMatch.LATITUDE || bestMatch.lat;
     const lng = bestMatch.LONGITUDE || bestMatch.lng;
-    const address = bestMatch.ADDRESS || bestMatch.address || 
-                   [bestMatch.BLK_NO, bestMatch.ROAD_NAME, bestMatch.BUILDING, 'SINGAPORE', bestMatch.POSTAL]
-                   .filter(Boolean).join(' ').trim();
+    
+    // Try multiple ways to extract address
+    let address = '';
+    
+    // Method 1: Check for pre-formatted address
+    if (bestMatch.ADDRESS) {
+      address = bestMatch.ADDRESS.trim();
+    } else if (bestMatch.address) {
+      address = bestMatch.address.trim();
+    }
+    
+    // Method 2: Build address from components (more reliable)
+    if (!address) {
+      const addressParts = [
+        bestMatch.BLK_NO || bestMatch.BLOCK,
+        bestMatch.ROAD_NAME || bestMatch.ROAD,
+        bestMatch.BUILDING || bestMatch.BUILDINGNAME,
+        bestMatch.POSTAL || bestMatch.POSTALCODE
+      ].filter(Boolean);
+      
+      if (addressParts.length) {
+        address = addressParts.join(' ') + ', SINGAPORE';
+      }
+    }
+    
+    // Method 3: Use the search value as fallback with "Singapore" appended
+    if (!address && bestMatch.SEARCHVAL) {
+      address = bestMatch.SEARCHVAL + ', SINGAPORE';
+    }
 
     if (!lat || !lng) {
-      console.warn('No coordinates found in search result');
+      console.warn('No coordinates found in search result for', storeName);
       return null;
     }
+
+    // Method 4: If still no address, try reverse geocoding the found coordinates
+    if (!address || address === 'Address not found') {
+      console.log(`No address from search, trying reverse geocoding for coordinates: ${lat}, ${lng}`);
+      const reverseGeocodedAddress = await reverseGeocode(lat, lng);
+      if (reverseGeocodedAddress) {
+        address = reverseGeocodedAddress;
+        console.log(`Got address from reverse geocoding: "${address}"`);
+      }
+    }
+
+    console.log(`Final extracted address for ${storeName}: "${address}"`);
 
     return {
       lat: parseFloat(lat).toFixed(6),
