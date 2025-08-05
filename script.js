@@ -92,48 +92,72 @@ function renderTable() {
   if (!tableBody) return;
   tableBody.innerHTML = '';
   scans.forEach((scan, idx) => {
-    // Create wrapper for swipe functionality
-    const wrapper = document.createElement('tr');
-    wrapper.className = 'swipe-row-wrapper';
+    // Create wrapper for each row to contain both the row and delete button
+    const wrapper = document.createElement('div');
+    wrapper.className = 'row-wrapper';
+    wrapper.style.position = 'relative';
+    wrapper.style.overflow = 'hidden';
     
-    // Create container cell that spans all columns
-    const containerCell = document.createElement('td');
-    containerCell.colSpan = 7;
-    containerCell.style.padding = '0';
-    containerCell.style.position = 'relative';
-    containerCell.style.overflow = 'hidden';
+    // Create the table row
+    const tr = document.createElement('tr');
+    tr.className = 'swipeable-row';
+    tr.dataset.index = idx;
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td>${scan.storeName}</td>
+      <td>${scan.unitNumber}</td>
+      <td>${scan.address ?? 'Not Found'}</td>
+      <td>${scan.lat ?? 'Not Found'}</td>
+      <td>${scan.lng ?? 'Not Found'}</td>
+      <td>${scan.businessType}</td>`;
     
-    // Create the actual row content as a div that looks like a table row
-    const rowContent = document.createElement('div');
-    rowContent.className = 'swipeable-row';
-    rowContent.dataset.index = idx;
-    rowContent.style.display = 'flex';
-    rowContent.style.width = '100%';
-    rowContent.style.background = 'var(--card-bg)';
-    rowContent.innerHTML = `
-      <div class="cell" style="flex: 0 0 50px; padding: 0.45rem 0.3rem; border-bottom: 1px solid #eee;">${idx + 1}</div>
-      <div class="cell" style="flex: 1; padding: 0.45rem 0.3rem; border-bottom: 1px solid #eee;">${scan.storeName}</div>
-      <div class="cell" style="flex: 0 0 80px; padding: 0.45rem 0.3rem; border-bottom: 1px solid #eee;">${scan.unitNumber}</div>
-      <div class="cell" style="flex: 2; padding: 0.45rem 0.3rem; border-bottom: 1px solid #eee;">${scan.address ?? 'Not Found'}</div>
-      <div class="cell" style="flex: 0 0 80px; padding: 0.45rem 0.3rem; border-bottom: 1px solid #eee;">${scan.lat ?? 'Not Found'}</div>
-      <div class="cell" style="flex: 0 0 80px; padding: 0.45rem 0.3rem; border-bottom: 1px solid #eee;">${scan.lng ?? 'Not Found'}</div>
-      <div class="cell" style="flex: 0 0 100px; padding: 0.45rem 0.3rem; border-bottom: 1px solid #eee;">${scan.businessType}</div>`;
+    // Create delete button positioned behind the row
+    const deleteButton = document.createElement('div');
+    deleteButton.className = 'delete-button';
+    deleteButton.innerHTML = '🗑️ Delete';
+    deleteButton.style.cssText = `
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 120px;
+      background: #ff4444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      z-index: 1;
+      user-select: none;
+    `;
     
-    // Create delete action (hidden behind the row)
-    const deleteAction = document.createElement('div');
-    deleteAction.className = 'delete-action';
-    deleteAction.innerHTML = '🗑️ Delete';
-    deleteAction.onclick = () => deleteRow(idx);
+    // Add click handler to delete button
+    deleteButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Delete button clicked for index:', idx);
+      deleteRow(idx);
+    });
+    
+    // Create table row container
+    const rowContainer = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 7;
+    cell.style.padding = '0';
+    cell.style.position = 'relative';
+    
+    // Assemble structure
+    wrapper.appendChild(deleteButton);
+    wrapper.appendChild(tr);
+    cell.appendChild(wrapper);
+    rowContainer.appendChild(cell);
     
     // Add swipe functionality
-    addSwipeToRow(rowContent, deleteAction, idx);
+    addSwipeToRow(tr, wrapper, deleteButton, idx);
     
-    // Assemble the structure
-    containerCell.appendChild(deleteAction);
-    containerCell.appendChild(rowContent);
-    wrapper.appendChild(containerCell);
-    
-    tableBody.appendChild(wrapper);
+    tableBody.appendChild(rowContainer);
   });
 }
 
@@ -147,11 +171,11 @@ function deleteRow(index) {
 }
 
 // Add swipe functionality to a table row
-function addSwipeToRow(rowElement, deleteElement, index) {
+function addSwipeToRow(rowElement, wrapper, deleteButton, index) {
   let startX = 0;
   let currentX = 0;
   let isDragging = false;
-  let threshold = 80; // Minimum swipe distance to reveal delete action
+  let threshold = 100; // Minimum swipe distance to reveal delete action
   
   // Touch events for mobile
   rowElement.addEventListener('touchstart', handleStart, { passive: false });
@@ -165,8 +189,10 @@ function addSwipeToRow(rowElement, deleteElement, index) {
   rowElement.addEventListener('mouseleave', handleEnd);
   
   function handleStart(e) {
-    // Don't start swipe if clicking on delete action
-    if (e.target.classList.contains('delete-action')) {
+    console.log('Swipe start detected', e.type); // Debug log
+    
+    // Don't start swipe if clicking on delete button
+    if (e.target.classList.contains('delete-button') || e.target.closest('.delete-button')) {
       return;
     }
     
@@ -187,12 +213,19 @@ function addSwipeToRow(rowElement, deleteElement, index) {
     currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
     const diffX = startX - currentX;
     
+    console.log('Swipe move', diffX); // Debug log
+    
     // Only allow left swipe (positive diffX)
     if (diffX > 0) {
       const moveDistance = Math.min(diffX, threshold);
+      
+      // Move the entire row left to reveal delete button
       rowElement.style.transform = `translateX(-${moveDistance}px)`;
+      rowElement.style.position = 'relative';
+      rowElement.style.zIndex = '10';
+      
     } else {
-      // Right swipe or no movement
+      // Right swipe or no movement - reset
       rowElement.style.transform = 'translateX(0px)';
     }
     
@@ -206,16 +239,19 @@ function addSwipeToRow(rowElement, deleteElement, index) {
     const diffX = startX - currentX;
     rowElement.classList.remove('swiping');
     
+    console.log('Swipe end', diffX, 'threshold:', threshold); // Debug log
+    
     if (diffX >= threshold) {
       // Swipe completed - keep delete action visible
       rowElement.style.transform = `translateX(-${threshold}px)`;
       
+      console.log('Delete button revealed'); // Debug log
+      
       // Add click listener to reset on tap outside
       const resetSwipe = (event) => {
-        // Check if clicked outside the row or on the delete button
-        if (!rowElement.parentElement.contains(event.target) || 
-            event.target.classList.contains('delete-action')) {
+        if (!wrapper.contains(event.target)) {
           rowElement.style.transform = 'translateX(0px)';
+          rowElement.style.zIndex = '';
           document.removeEventListener('click', resetSwipe);
           document.removeEventListener('touchstart', resetSwipe);
         }
@@ -230,6 +266,7 @@ function addSwipeToRow(rowElement, deleteElement, index) {
     } else {
       // Swipe not far enough - reset
       rowElement.style.transform = 'translateX(0px)';
+      rowElement.style.zIndex = '';
     }
   }
 }
