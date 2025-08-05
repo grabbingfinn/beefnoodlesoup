@@ -97,6 +97,7 @@ function renderTable() {
     wrapper.className = 'row-wrapper';
     wrapper.style.position = 'relative';
     wrapper.style.overflow = 'hidden';
+    wrapper.style.background = 'transparent';
     
     // Create the table row
     const tr = document.createElement('tr');
@@ -116,24 +117,9 @@ function renderTable() {
     deleteButton.className = 'delete-button';
     deleteButton.innerHTML = '🗑️ Delete';
     deleteButton.dataset.index = idx; // Store index in data attribute as backup
-    deleteButton.style.cssText = `
-      position: absolute;
-      top: 0;
-      right: -120px;
-      bottom: 0;
-      width: 120px;
-      background: #ff4444;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 14px;
-      z-index: 5;
-      user-select: none;
-      pointer-events: auto;
-    `;
+    // Let CSS handle all the styling - don't override with inline styles
+    deleteButton.style.position = 'absolute';
+    deleteButton.style.right = '-120px'; // Hidden by default
     
     // Add multiple event handlers to ensure it works
     const handleDelete = (e) => {
@@ -154,6 +140,7 @@ function renderTable() {
     cell.colSpan = 7;
     cell.style.padding = '0';
     cell.style.position = 'relative';
+    cell.style.overflow = 'hidden';
     
     // Assemble structure
     wrapper.appendChild(deleteButton);
@@ -264,6 +251,7 @@ function addSwipeToRow(rowElement, wrapper, deleteButton, index) {
       // Explicitly move delete button into view
       if (deleteButton) {
         deleteButton.style.right = '0px';
+        deleteButton.style.visibility = 'visible';
       }
       
       console.log('Delete button revealed'); // Debug log
@@ -276,6 +264,7 @@ function addSwipeToRow(rowElement, wrapper, deleteButton, index) {
           // Hide delete button
           if (deleteButton) {
             deleteButton.style.right = '-120px';
+            deleteButton.style.visibility = 'hidden';
           }
           document.removeEventListener('click', resetSwipe);
           document.removeEventListener('touchstart', resetSwipe);
@@ -295,6 +284,7 @@ function addSwipeToRow(rowElement, wrapper, deleteButton, index) {
       // Hide delete button
       if (deleteButton) {
         deleteButton.style.right = '-120px';
+        deleteButton.style.visibility = 'hidden';
       }
     }
   }
