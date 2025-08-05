@@ -382,6 +382,7 @@
     z-index: 2;
     overflow: hidden; /* Prevent delete button from spilling over */
     height: 56px; /* Fixed row height */
+    contain: layout; /* Better containment for mobile */
   }
   
   /* Apply striping to the swipeable rows */
@@ -410,8 +411,7 @@
     position: absolute !important;
     top: 0;
     right: -120px !important; /* Hidden by default */
-    height: 100%;
-    max-height: 56px; /* Match table row height */
+    height: 56px; /* Fixed height instead of percentage */
     width: 120px;
     background: #ff4444;
     display: flex;
@@ -429,6 +429,9 @@
     outline: none;
     -webkit-tap-highlight-color: rgba(0,0,0,0.1);
     visibility: hidden; /* Extra hiding measure */
+    box-sizing: border-box;
+    clip-path: inset(0 0 0 0); /* Modern clipping */
+    -webkit-clip-path: inset(0 0 0 0);
   }
 
   .delete-button:hover {
@@ -510,6 +513,7 @@
 
     .swipeable-row {
       height: 50px; /* Smaller height for mobile */
+      contain: layout style; /* Stronger containment for mobile */
     }
 
     .swipeable-row td {
@@ -517,7 +521,34 @@
     }
 
     .delete-button {
+      height: 50px !important; /* Fixed height for mobile */
       max-height: 50px;
+      clip-path: inset(0 0 0 0); /* Modern clipping for mobile */
+      -webkit-clip-path: inset(0 0 0 0);
+    }
+
+    /* Mobile-specific containment improvements */
+    tbody {
+      contain: layout;
+      isolation: isolate; /* Create new stacking context */
+    }
+
+    .swipeable-row {
+      will-change: transform; /* Optimize for mobile transforms */
+      -webkit-transform: translateZ(0); /* Force hardware acceleration */
+      transform: translateZ(0);
+      isolation: isolate; /* Isolate each row */
+      position: relative;
+      /* Additional mobile containment */
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+    }
+
+    /* Force delete button to stay within row bounds on mobile */
+    .delete-button {
+      transform: translateZ(0); /* Force hardware acceleration */
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
     }
 
     /* Mobile-specific fixed column widths */
@@ -554,6 +585,7 @@
 
     .swipeable-row {
       height: 48px; /* Even smaller height for extra small phones */
+      contain: layout style; /* Stronger containment for extra small phones */
     }
 
     .swipeable-row td {
@@ -561,7 +593,10 @@
     }
 
     .delete-button {
+      height: 48px !important; /* Fixed height for extra small phones */
       max-height: 48px;
+      clip-path: inset(0 0 0 0); /* Modern clipping for extra small */
+      -webkit-clip-path: inset(0 0 0 0);
     }
 
     /* Extra small phone fixed column widths */
