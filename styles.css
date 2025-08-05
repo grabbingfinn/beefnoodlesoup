@@ -119,6 +119,71 @@
     box-shadow: 0 4px 16px rgba(0, 177, 79, 0.3);
   }
 
+  /* Scanning overlay */
+  .scanning-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    backdrop-filter: blur(2px);
+    border-radius: inherit;
+  }
+
+  .scanning-overlay.show {
+    display: flex;
+  }
+
+  .scanning-content {
+    text-align: center;
+    color: white;
+  }
+
+  .spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  .scanning-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    letter-spacing: -0.2px;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Mobile scanning overlay optimizations */
+  @media (max-width: 480px) {
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border-width: 3px;
+    }
+    
+    .scanning-text {
+      font-size: 16px;
+    }
+    
+    .scanning-content {
+      padding: 0 20px;
+    }
+  }
+
   #progressBar { 
     position: absolute; 
     left: 0; 
@@ -442,69 +507,4 @@
   }
 
   /* Extra small phones */
-  @media (max-width: 320px) {
-    .card {
-      margin: 8px;
-      padding: 16px;
-    }
-    
-    .video-wrapper {
-      margin: 0 8px;
-    }
-    
-    header {
-      padding: env(safe-area-inset-top, 0) 12px 12px 12px;
-      font-size: 16px;
-    }
-    
-    th, td {
-      padding: 10px 6px;
-      font-size: 12px;
-    }
-  }
-
-  /* Loading and animation improvements */
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-
-  .scan-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    animation: pulse 1.5s infinite;
-  }
-
-  /* Smooth focus transitions */
-  input:focus,
-  button:focus {
-    outline: 2px solid var(--primary);
-    outline-offset: 2px;
-  }
-
-  /* Enhanced table scrolling on mobile */
-  @media (max-width: 768px) {
-    .card {
-      padding-bottom: env(safe-area-inset-bottom, 24px);
-    }
-    
-    table {
-      margin-bottom: env(safe-area-inset-bottom, 0);
-    }
-  }
-
-  /* Prevent text selection on buttons and interactive elements */
-  .scan-btn,
-  .btn,
-  .swipeable-row {
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-  }
-
-  /* Enhanced visual feedback for touch */
-  .scan-btn:active,
-  .btn:active {
-    transform: scale(0.98);
-  }
+  @
