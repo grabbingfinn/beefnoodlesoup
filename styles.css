@@ -106,10 +106,15 @@
   tbody tr:nth-child(odd) { background:#fafafa; }
 
   /* Swipe-to-delete styles */
+  .swipe-row-wrapper {
+    position: relative;
+  }
+
   .swipeable-row {
     position: relative;
     transition: transform 0.3s ease;
     cursor: grab;
+    z-index: 2;
   }
 
   .swipeable-row:active {
@@ -120,71 +125,82 @@
     transition: none;
   }
 
-  /* Delete column and button */
-  .delete-cell {
-    width: 60px;
-    text-align: center;
-    padding: 0.2rem !important;
-  }
-
-  .delete-btn {
+  /* Delete action positioned behind the row */
+  .delete-action {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 120px;
     background: #ff4444;
-    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: white;
-    padding: 0.4rem 0.6rem;
-    border-radius: 6px;
+    font-weight: 600;
     font-size: 0.9rem;
     cursor: pointer;
-    transition: all 0.2s ease;
+    z-index: 1;
+    transition: background-color 0.2s ease;
   }
 
-  .delete-btn:hover {
+  .delete-action:hover {
     background: #cc3333;
-    transform: scale(1.1);
   }
 
-  .delete-btn:active {
-    transform: scale(0.95);
+  .delete-action:active {
+    background: #aa2222;
   }
 
-  /* Initially hide delete column - show on swipe or hover */
-  .delete-cell {
-    opacity: 0;
-    transform: translateX(20px);
-    transition: all 0.3s ease;
-    pointer-events: none;
+  /* Alternating row colors for the custom row structure */
+  .swipe-row-wrapper:nth-child(odd) .swipeable-row {
+    background: #fafafa;
   }
 
-  /* Show delete button on row hover (desktop) */
-  .swipeable-row:hover .delete-cell {
-    opacity: 1;
-    transform: translateX(0);
-    pointer-events: auto;
+  .swipe-row-wrapper:nth-child(even) .swipeable-row {
+    background: var(--card-bg);
   }
 
-  /* Show delete button when swiped */
-  .swipeable-row.swiped .delete-cell {
-    opacity: 1;
-    transform: translateX(0);
-    pointer-events: auto;
+  /* Cell styling to match table appearance */
+  .swipeable-row .cell {
+    font-size: 0.85rem;
+    align-items: center;
+    display: flex;
   }
 
-  /* Mobile-specific swipe indicators */
+  /* Mobile-specific swipe hint */
   @media (max-width: 768px) {
     .swipeable-row::after {
-      content: "← Swipe to delete";
+      content: "← Swipe left to delete";
       position: absolute;
-      right: 10px;
+      right: 15px;
       top: 50%;
       transform: translateY(-50%);
-      color: #999;
+      color: #aaa;
       font-size: 0.7rem;
-      opacity: 0;
-      transition: opacity 0.3s ease;
+      opacity: 0.4;
       pointer-events: none;
+      z-index: 3;
     }
 
-    .swipeable-row:not(.swiped):not(:hover)::after {
-      opacity: 0.3;
+    /* Hide hint when row is swiped */
+    .swipeable-row[style*="translateX"]::after {
+      opacity: 0;
+    }
+  }
+
+  /* Desktop hover effect */
+  @media (min-width: 769px) {
+    .swipeable-row:hover::after {
+      content: "Click and drag left →";
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #aaa;
+      font-size: 0.7rem;
+      opacity: 0.6;
+      pointer-events: none;
+      z-index: 3;
     }
   }
