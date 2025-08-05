@@ -93,6 +93,8 @@ function renderTable() {
   tableBody.innerHTML = '';
   scans.forEach((scan, idx) => {
     const tr = document.createElement('tr');
+    tr.className = 'swipeable-row';
+    tr.dataset.index = idx;
     tr.innerHTML = `
       <td>${idx + 1}</td>
       <td>${scan.storeName}</td>
@@ -100,9 +102,110 @@ function renderTable() {
       <td>${scan.address ?? 'Not Found'}</td>
       <td>${scan.lat ?? 'Not Found'}</td>
       <td>${scan.lng ?? 'Not Found'}</td>
-      <td>${scan.businessType}</td>`;
+      <td>${scan.businessType}</td>
+      <td class="delete-cell">
+        <button class="delete-btn" onclick="deleteRow(${idx})" title="Delete this row">🗑️</button>
+      </td>`;
+    
+    // Add swipe functionality
+    addSwipeToRow(tr, idx);
+    
     tableBody.appendChild(tr);
   });
+}
+
+// Delete individual row
+function deleteRow(index) {
+  if (confirm(`Delete scan #${index + 1}?`)) {
+    scans.splice(index, 1);
+    saveScans();
+    renderTable();
+  }
+}
+
+// Add swipe functionality to a table row
+function addSwipeToRow(rowElement, index) {
+  let startX = 0;
+  let currentX = 0;
+  let isDragging = false;
+  let threshold = 50; // Minimum swipe distance to trigger delete action
+  
+  // Touch events for mobile
+  rowElement.addEventListener('touchstart', handleStart, { passive: false });
+  rowElement.addEventListener('touchmove', handleMove, { passive: false });
+  rowElement.addEventListener('touchend', handleEnd, { passive: false });
+  
+  // Mouse events for desktop (optional - can use hover instead)
+  rowElement.addEventListener('mousedown', handleStart);
+  rowElement.addEventListener('mousemove', handleMove);
+  rowElement.addEventListener('mouseup', handleEnd);
+  rowElement.addEventListener('mouseleave', handleEnd);
+  
+  function handleStart(e) {
+    // Don't start swipe if clicking on delete button
+    if (e.target.classList.contains('delete-btn')) {
+      return;
+    }
+    
+    isDragging = true;
+    startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+    currentX = startX;
+    rowElement.classList.add('swiping');
+    
+    // Prevent text selection on desktop
+    if (e.type.includes('mouse')) {
+      e.preventDefault();
+    }
+  }
+  
+  function handleMove(e) {
+    if (!isDragging) return;
+    
+    currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+    const diffX = startX - currentX;
+    
+    // Only allow left swipe (positive diffX)
+    if (diffX > 0 && diffX <= threshold) {
+      // Visual feedback during swipe
+      const progress = diffX / threshold;
+      rowElement.style.opacity = 1 - (progress * 0.2); // Slightly fade
+    }
+    
+    e.preventDefault();
+  }
+  
+  function handleEnd(e) {
+    if (!isDragging) return;
+    isDragging = false;
+    
+    const diffX = startX - currentX;
+    rowElement.classList.remove('swiping');
+    rowElement.style.opacity = ''; // Reset opacity
+    
+    if (diffX >= threshold) {
+      // Swipe completed - mark as swiped to show delete button
+      rowElement.classList.add('swiped');
+      
+      // Add click listener to reset on tap outside
+      const resetSwipe = (event) => {
+        if (!rowElement.contains(event.target)) {
+          rowElement.classList.remove('swiped');
+          document.removeEventListener('click', resetSwipe);
+          document.removeEventListener('touchstart', resetSwipe);
+        }
+      };
+      
+      // Delay to avoid immediate reset
+      setTimeout(() => {
+        document.addEventListener('click', resetSwipe);
+        document.addEventListener('touchstart', resetSwipe);
+      }, 100);
+      
+    } else {
+      // Swipe not far enough - reset
+      rowElement.classList.remove('swiped');
+    }
+  }
 }
 
 // After renderTable definition add event listeners
