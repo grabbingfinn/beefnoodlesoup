@@ -128,14 +128,13 @@ function renderTable() {
   if (!tableBody) return;
   tableBody.innerHTML = '';
   scans.forEach((scan, idx) => {
-    // Create the main table row (this will be the swipeable element)
+    // Create the main table row
     const tr = document.createElement('tr');
-    tr.className = 'swipeable-row row-wrapper';
+    tr.className = 'table-row';
     tr.dataset.index = idx;
-    tr.style.position = 'relative';
-    tr.style.background = 'var(--card-bg)';
     
-    // Add table cells with data
+    // Add table cells with data including remarks
+    const remarksValue = scan.remarks || '';
     tr.innerHTML = `
       <td>${idx + 1}</td>
       <td>${scan.storeName}</td>
@@ -143,36 +142,146 @@ function renderTable() {
       <td>${scan.address ?? 'Not Found'}</td>
       <td>${scan.lat ?? 'Not Found'}</td>
       <td>${scan.lng ?? 'Not Found'}</td>
-      <td>${scan.businessType}</td>`;
-    
-    // Create delete button positioned absolutely relative to the row
-    const deleteButton = document.createElement('div');
-    deleteButton.className = 'delete-button';
-    deleteButton.innerHTML = '🗑️ Delete';
-    deleteButton.dataset.index = idx;
-    
-    // Add delete button as child of the row
-    tr.appendChild(deleteButton);
-    
-    // Add multiple event handlers to ensure it works
-    const handleDelete = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const index = parseInt(e.target.dataset.index) || idx;
-      console.log('Delete button clicked for index:', index);
-      console.log('Current scans array:', scans);
-      deleteRow(index);
-    };
-    
-    deleteButton.addEventListener('click', handleDelete);
-    deleteButton.addEventListener('touchend', handleDelete);
-    
-    // Add swipe functionality to the table row itself
-    addSwipeToRow(tr, tr, deleteButton, idx);
+      <td>${scan.businessType}</td>
+      <td class="remarks-cell">
+        <input type="text" class="remarks-input" value="${remarksValue}" 
+               placeholder="Add remarks..." data-index="${idx}">
+      </td>
+      <td class="actions-cell">
+        <button class="edit-btn" data-index="${idx}" title="Edit Row">
+          ✏️ Edit
+        </button>
+        <button class="delete-btn" data-index="${idx}" title="Delete Row">
+          🗑️ Delete
+        </button>
+      </td>`;
     
     // Append row to table
     tableBody.appendChild(tr);
+    
+    // Add event listeners for remarks input
+    const remarksInput = tr.querySelector('.remarks-input');
+    remarksInput.addEventListener('blur', (e) => {
+      const index = parseInt(e.target.dataset.index);
+      scans[index].remarks = e.target.value;
+      saveScans();
+    });
+    
+    remarksInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.target.blur(); // This will trigger the blur event above
+      }
+    });
+    
+    // Add event listeners for action buttons
+    const editBtn = tr.querySelector('.edit-btn');
+    const deleteBtn = tr.querySelector('.delete-btn');
+    
+    editBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const index = parseInt(e.target.dataset.index);
+      editRow(index);
+    });
+    
+    deleteBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const index = parseInt(e.target.dataset.index);
+      deleteRow(index);
+    });
   });
+}
+
+// Edit individual row
+function editRow(index) {
+  const scan = scans[index];
+  if (!scan) return;
+  
+  // Create a simple modal for editing
+  const modal = document.createElement('div');
+  modal.className = 'edit-modal';
+  modal.innerHTML = `
+    <div class="edit-modal-content">
+      <h3>Edit Scan #${index + 1}</h3>
+      <div class="edit-form">
+        <div class="edit-field">
+          <label>Store Name:</label>
+          <input type="text" id="edit-storeName" value="${scan.storeName}">
+        </div>
+        <div class="edit-field">
+          <label>Unit Number:</label>
+          <input type="text" id="edit-unitNumber" value="${scan.unitNumber}">
+        </div>
+        <div class="edit-field">
+          <label>Address:</label>
+          <input type="text" id="edit-address" value="${scan.address || ''}">
+        </div>
+        <div class="edit-field">
+          <label>Latitude:</label>
+          <input type="text" id="edit-lat" value="${scan.lat || ''}">
+        </div>
+        <div class="edit-field">
+          <label>Longitude:</label>
+          <input type="text" id="edit-lng" value="${scan.lng || ''}">
+        </div>
+        <div class="edit-field">
+          <label>Business Type:</label>
+          <input type="text" id="edit-businessType" value="${scan.businessType}">
+        </div>
+        <div class="edit-field">
+          <label>Remarks:</label>
+          <input type="text" id="edit-remarks" value="${scan.remarks || ''}">
+        </div>
+        <div class="edit-actions">
+          <button class="btn save-btn">💾 Save</button>
+          <button class="btn cancel-btn">❌ Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Add event listeners
+  const saveBtn = modal.querySelector('.save-btn');
+  const cancelBtn = modal.querySelector('.cancel-btn');
+  
+  const closeModal = () => {
+    document.body.removeChild(modal);
+  };
+  
+  saveBtn.addEventListener('click', () => {
+    // Update scan data
+    scans[index] = {
+      ...scan,
+      storeName: document.getElementById('edit-storeName').value,
+      unitNumber: document.getElementById('edit-unitNumber').value,
+      address: document.getElementById('edit-address').value,
+      lat: document.getElementById('edit-lat').value,
+      lng: document.getElementById('edit-lng').value,
+      businessType: document.getElementById('edit-businessType').value,
+      remarks: document.getElementById('edit-remarks').value
+    };
+    
+    saveScans();
+    renderTable();
+    closeModal();
+  });
+  
+  cancelBtn.addEventListener('click', closeModal);
+  
+  // Close modal when clicking outside
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      closeModal();
+    }
+  });
+  
+  // Focus first input
+  setTimeout(() => {
+    document.getElementById('edit-storeName').focus();
+  }, 100);
 }
 
 // Delete individual row
@@ -184,131 +293,7 @@ function deleteRow(index) {
   }
 }
 
-// Add swipe functionality to a table row
-function addSwipeToRow(rowElement, wrapper, deleteButton, index) {
-  let startX = 0;
-  let currentX = 0;
-  let isDragging = false;
-  let threshold = 100; // Minimum swipe distance to reveal delete action
-  
-  // Touch events for mobile
-  rowElement.addEventListener('touchstart', handleStart, { passive: false });
-  rowElement.addEventListener('touchmove', handleMove, { passive: false });
-  rowElement.addEventListener('touchend', handleEnd, { passive: false });
-  
-  // Mouse events for desktop
-  rowElement.addEventListener('mousedown', handleStart);
-  rowElement.addEventListener('mousemove', handleMove);
-  rowElement.addEventListener('mouseup', handleEnd);
-  rowElement.addEventListener('mouseleave', handleEnd);
-  
-  function handleStart(e) {
-    console.log('Swipe start detected', e.type); // Debug log
-    
-    // Don't start swipe if clicking on delete button
-    if (e.target.classList.contains('delete-button') || e.target.closest('.delete-button')) {
-      return;
-    }
-    
-    isDragging = true;
-    startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-    currentX = startX;
-    rowElement.classList.add('swiping');
-    
-    // Prevent text selection on desktop
-    if (e.type.includes('mouse')) {
-      e.preventDefault();
-    }
-  }
-  
-  function handleMove(e) {
-    if (!isDragging) return;
-    
-    currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-    const diffX = startX - currentX;
-    
-    console.log('Swipe move', diffX); // Debug log
-    
-    // Only allow left swipe (positive diffX)
-    if (diffX > 0) {
-      const moveDistance = Math.min(diffX, threshold);
-      
-      // Move the entire row left to reveal delete button
-      rowElement.style.transform = `translateX(-${moveDistance}px)`;
-      rowElement.style.position = 'relative';
-      rowElement.style.zIndex = '10';
-      
-      // Move delete button proportionally into view
-      if (deleteButton) {
-        const buttonPosition = -120 + moveDistance;
-        deleteButton.style.right = `${Math.min(buttonPosition, 0)}px`;
-      }
-      
-    } else {
-      // Right swipe or no movement - reset
-      rowElement.style.transform = 'translateX(0px)';
-      if (deleteButton) {
-        deleteButton.style.right = '-120px';
-      }
-    }
-    
-    e.preventDefault();
-  }
-  
-  function handleEnd(e) {
-    if (!isDragging) return;
-    isDragging = false;
-    
-    const diffX = startX - currentX;
-    rowElement.classList.remove('swiping');
-    
-    console.log('Swipe end', diffX, 'threshold:', threshold); // Debug log
-    
-    if (diffX >= threshold) {
-      // Swipe completed - keep delete action visible
-      rowElement.style.transform = `translateX(-${threshold}px)`;
-      
-      // Explicitly move delete button into view
-      if (deleteButton) {
-        deleteButton.style.right = '0px';
-        deleteButton.style.visibility = 'visible';
-      }
-      
-      console.log('Delete button revealed'); // Debug log
-      
-      // Add click listener to reset on tap outside
-      const resetSwipe = (event) => {
-        if (!wrapper.contains(event.target)) {
-          rowElement.style.transform = 'translateX(0px)';
-          rowElement.style.zIndex = '';
-          // Hide delete button
-          if (deleteButton) {
-            deleteButton.style.right = '-120px';
-            deleteButton.style.visibility = 'hidden';
-          }
-          document.removeEventListener('click', resetSwipe);
-          document.removeEventListener('touchstart', resetSwipe);
-        }
-      };
-      
-      // Delay to avoid immediate reset
-      setTimeout(() => {
-        document.addEventListener('click', resetSwipe);
-        document.addEventListener('touchstart', resetSwipe);
-      }, 100);
-      
-    } else {
-      // Swipe not far enough - reset
-      rowElement.style.transform = 'translateX(0px)';
-      rowElement.style.zIndex = '';
-      // Hide delete button
-      if (deleteButton) {
-        deleteButton.style.right = '-120px';
-        deleteButton.style.visibility = 'hidden';
-      }
-    }
-  }
-}
+// Removed old swipe functionality - now using buttons
 
 // After renderTable definition add event listeners
 // --- Toolbar actions ---
@@ -328,10 +313,10 @@ document.getElementById('exportBtn').addEventListener('click', () => {
     alert('No data to export');
     return;
   }
-  const headers = ['Store Name','Unit','Address','Lat','Lng','Type'];
+  const headers = ['Store Name','Unit','Address','Lat','Lng','Type','Remarks'];
   const csvRows = [headers.join(',')];
   scans.forEach(s => {
-    const row = [s.storeName, s.unitNumber, s.address, s.lat, s.lng, s.businessType]
+    const row = [s.storeName, s.unitNumber, s.address, s.lat, s.lng, s.businessType, s.remarks || '']
       .map(v => '"' + (v || '').replace(/"/g,'""') + '"').join(',');
     csvRows.push(row);
   });
