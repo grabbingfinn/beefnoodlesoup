@@ -339,9 +339,10 @@
       padding: 16px 12px; 
       font-size: 14px;
       text-align: left;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal; /* Allow text wrapping */
+      word-wrap: break-word; /* Break long words if needed */
+      word-break: break-word; /* Modern property for word breaking */
+      vertical-align: top; /* Align content to top when wrapping */
     }
 
     /* Fixed column widths to prevent overlapping */
@@ -437,12 +438,13 @@ th:nth-child(9), td:nth-child(9) { width: 140px; }  /* ACTIONS */
       }
 
       .table-row {
-        height: 50px; /* Smaller height for mobile */
+        min-height: 50px; /* Minimum height for mobile, can expand */
       }
 
       .table-row td {
-        height: 50px;
-        vertical-align: middle;
+        min-height: 50px;
+        vertical-align: top; /* Align to top when text wraps */
+        padding: 8px 6px; /* Adjust padding for mobile */
       }
 
     /* Mobile-specific containment improvements */
@@ -488,12 +490,13 @@ th:nth-child(9), td:nth-child(9) { width: 120px; }  /* ACTIONS */
       }
 
       .table-row {
-        height: 48px; /* Even smaller height for extra small phones */
+        min-height: 48px; /* Minimum height for extra small phones, can expand */
       }
 
       .table-row td {
-        height: 48px;
-        vertical-align: middle;
+        min-height: 48px;
+        vertical-align: top; /* Align to top when text wraps */
+        padding: 6px 4px; /* Compact padding for extra small screens */
       }
 
     /* Extra small phone fixed column widths */
@@ -559,6 +562,9 @@ th:nth-child(9), td:nth-child(9) { width: 100px; }  /* ACTIONS */
   background: var(--card-bg);
   color: var(--text);
   box-sizing: border-box;
+  resize: vertical; /* Allow vertical resizing */
+  min-height: 20px; /* Minimum height */
+  line-height: 1.4; /* Better line spacing */
 }
 
 .remarks-input:focus {
@@ -570,17 +576,19 @@ th:nth-child(9), td:nth-child(9) { width: 100px; }  /* ACTIONS */
 /* Action buttons styling */
 .actions-cell {
   padding: 4px !important;
+  vertical-align: top; /* Align buttons to top of cell */
 }
 
 .edit-btn, .delete-btn {
   padding: 4px 8px;
-  margin: 0 2px;
+  margin: 0 2px 2px 0; /* Add bottom margin for stacking */
   border: none;
   border-radius: 4px;
   font-size: 11px;
   cursor: pointer;
   transition: all 0.2s ease;
   font-weight: 500;
+  display: inline-block; /* Better control over positioning */
 }
 
 .edit-btn {
