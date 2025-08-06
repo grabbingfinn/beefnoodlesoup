@@ -126,6 +126,10 @@ function saveScans() {
 
 function renderTable() {
   if (!tableBody) return;
+  
+  // Clear any existing search highlights when re-rendering
+  clearSearchHighlights();
+  
   tableBody.innerHTML = '';
   scans.forEach((scan, idx) => {
     // Create the main table row
@@ -334,62 +338,118 @@ document.getElementById('exportBtn').addEventListener('click', () => {
 const storeSearchInput = document.getElementById('storeSearchInput');
 const searchLocationBtn = document.getElementById('searchLocationBtn');
 
-async function performManualStoreSearch() {
+function performTableSearch() {
   const searchQuery = storeSearchInput.value.trim();
+  
+  // Clear previous highlights
+  clearSearchHighlights();
+  
   if (!searchQuery) {
-    alert('Please enter a store name to search');
+    statusDiv.textContent = '';
     return;
   }
 
-  statusDiv.textContent = 'Searching for store location...';
-  
-  // Get current location for proximity search
-  let geo = currentLocation;
-  if (!geo.lat) {
-    geo = await getCurrentLocation();
-  }
-
-  // Search for the store
-  const storeLocation = await searchStoreLocation(searchQuery, geo.lat, geo.lng);
-  
-  if (storeLocation) {
-    console.log('Manual search found location:', storeLocation);
-    
-    // Add the found location to scans
-    const info = {
-      storeName: searchQuery,
-      unitNumber: 'Not Found',
-      address: storeLocation.address,
-      lat: storeLocation.lat,
-      lng: storeLocation.lng,
-      category: 'Unknown'
-    };
-    
-    scans.push(info);
-    saveScans();
-    renderTable();
-    
-    statusDiv.textContent = `Found: ${searchQuery} at ${storeLocation.address}`;
-    storeSearchInput.value = '';
-    
+  if (scans.length === 0) {
+    statusDiv.textContent = 'No data to search through';
     setTimeout(() => {
       statusDiv.textContent = '';
-    }, 3000);
+    }, 2000);
+    return;
+  }
+
+  // Search through the scans data
+  const foundIndices = [];
+  const searchLower = searchQuery.toLowerCase();
+  
+  scans.forEach((scan, index) => {
+    // Search in store name (primary field)
+    if (scan.storeName && scan.storeName.toLowerCase().includes(searchLower)) {
+      foundIndices.push(index);
+      return;
+    }
+    
+    // Also search in other fields for comprehensive results
+    const searchableFields = [
+      scan.unitNumber,
+      scan.address,
+      scan.category,
+      scan.remarks
+    ];
+    
+    for (const field of searchableFields) {
+      if (field && field.toString().toLowerCase().includes(searchLower)) {
+        foundIndices.push(index);
+        break; // Don't add the same row multiple times
+      }
+    }
+  });
+
+  if (foundIndices.length > 0) {
+    // Highlight found rows
+    highlightSearchResults(foundIndices);
+    
+    // Update status
+    const plural = foundIndices.length === 1 ? 'result' : 'results';
+    statusDiv.textContent = `Found ${foundIndices.length} ${plural} for "${searchQuery}"`;
+    
+    // Scroll to first result
+    scrollToSearchResult(foundIndices[0]);
+    
+    // Clear status after 5 seconds
+    setTimeout(() => {
+      statusDiv.textContent = '';
+    }, 5000);
   } else {
-    console.log('Manual search found no results for:', searchQuery);
-    statusDiv.textContent = `No location found for: ${searchQuery}`;
+    statusDiv.textContent = `No results found for "${searchQuery}"`;
     setTimeout(() => {
       statusDiv.textContent = '';
     }, 3000);
   }
 }
 
-searchLocationBtn.addEventListener('click', performManualStoreSearch);
+function clearSearchHighlights() {
+  // Remove highlight class from all rows
+  const allRows = document.querySelectorAll('.table-row');
+  allRows.forEach(row => {
+    row.classList.remove('search-highlight');
+  });
+}
+
+function highlightSearchResults(indices) {
+  // Add highlight class to found rows
+  const allRows = document.querySelectorAll('.table-row');
+  indices.forEach(index => {
+    if (allRows[index]) {
+      allRows[index].classList.add('search-highlight');
+    }
+  });
+}
+
+function scrollToSearchResult(index) {
+  // Scroll to the first found result
+  const allRows = document.querySelectorAll('.table-row');
+  if (allRows[index]) {
+    allRows[index].scrollIntoView({
+      behavior: 'smooth',
+      block: 'center'
+    });
+  }
+}
+
+searchLocationBtn.addEventListener('click', performTableSearch);
 
 // Allow Enter key to trigger search
 storeSearchInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
-    performManualStoreSearch();
+    performTableSearch();
+  }
+});
+
+// Clear search highlights when input is cleared
+storeSearchInput.addEventListener('input', (e) => {
+  if (e.target.value.trim() === '') {
+    clearSearchHighlights();
+    statusDiv.textContent = '';
   }
 });
 
