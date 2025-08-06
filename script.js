@@ -45,7 +45,7 @@ async function extractInfoVision(imageUrl) {
         {
           role: 'user',
           content:
-            'Extract JSON with keys: storeName, unitNumber, address, businessType. Use "Not Found" if unknown.'
+            'Extract JSON with keys: storeName, unitNumber, address, category. For category, choose the most appropriate from: Art, Attractions, Auto, Beauty Services, Commercial Building, Education, Essentials, Financial, Food and Beverage, General Merchandise, Government Building, Healthcare, Home Services, Hotel, Industrial, Local Services, Mass Media, Nightlife, Physical Feature, Professional Services, Religious Organization, Residential, Sports and Fitness, Travel. Use "Not Found" if unknown.'
         },
         {
           role: 'user',
@@ -142,7 +142,7 @@ function renderTable() {
       <td>${scan.address ?? 'Not Found'}</td>
       <td>${scan.lat ?? 'Not Found'}</td>
       <td>${scan.lng ?? 'Not Found'}</td>
-      <td>${scan.businessType}</td>
+      <td>${scan.category}</td>
       <td class="remarks-cell">
         <input type="text" class="remarks-input" value="${remarksValue}" 
                placeholder="Add remarks..." data-index="${idx}">
@@ -226,8 +226,8 @@ function editRow(index) {
           <input type="text" id="edit-lng" value="${scan.lng || ''}">
         </div>
         <div class="edit-field">
-          <label>Business Type:</label>
-          <input type="text" id="edit-businessType" value="${scan.businessType}">
+          <label>Category:</label>
+          <input type="text" id="edit-category" value="${scan.category}">
         </div>
         <div class="edit-field">
           <label>Remarks:</label>
@@ -260,7 +260,7 @@ function editRow(index) {
       address: document.getElementById('edit-address').value,
       lat: document.getElementById('edit-lat').value,
       lng: document.getElementById('edit-lng').value,
-      businessType: document.getElementById('edit-businessType').value,
+      category: document.getElementById('edit-category').value,
       remarks: document.getElementById('edit-remarks').value
     };
     
@@ -313,10 +313,10 @@ document.getElementById('exportBtn').addEventListener('click', () => {
     alert('No data to export');
     return;
   }
-  const headers = ['Store Name','Unit','Address','Lat','Lng','Type','Remarks'];
+  const headers = ['Store Name','Unit','Address','Lat','Lng','Category','Remarks'];
   const csvRows = [headers.join(',')];
   scans.forEach(s => {
-    const row = [s.storeName, s.unitNumber, s.address, s.lat, s.lng, s.businessType, s.remarks || '']
+    const row = [s.storeName, s.unitNumber, s.address, s.lat, s.lng, s.category, s.remarks || '']
       .map(v => '"' + (v || '').replace(/"/g,'""') + '"').join(',');
     csvRows.push(row);
   });
@@ -362,7 +362,7 @@ async function performManualStoreSearch() {
       address: storeLocation.address,
       lat: storeLocation.lat,
       lng: storeLocation.lng,
-      businessType: 'Unknown'
+      category: 'Unknown'
     };
     
     scans.push(info);
@@ -651,7 +651,7 @@ async function extractInfoGPT(rawText) {
         temperature: 0,
         messages: [
           { role: 'system', content: 'You extract structured data from storefront OCR.' },
-          { role: 'user', content: `Extract JSON with keys: storeName, unitNumber, address, businessType. Use "Not Found" if unknown. OCR: """${rawText}"""` }
+          { role: 'user', content: `Extract JSON with keys: storeName, unitNumber, address, category. For category, choose the most appropriate from: Art, Attractions, Auto, Beauty Services, Commercial Building, Education, Essentials, Financial, Food and Beverage, General Merchandise, Government Building, Healthcare, Home Services, Hotel, Industrial, Local Services, Mass Media, Nightlife, Physical Feature, Professional Services, Religious Organization, Residential, Sports and Fitness, Travel. Use "Not Found" if unknown. OCR: """${rawText}"""` }
         ]
       })
     });
@@ -737,7 +737,7 @@ async function performScanFromCanvas(canvas) {
   // Try Vision JSON extraction first
   let parsed = null;
   if (openaiApiKey) {
-    showScanningOverlay('Analyzing with AI...');
+    showScanningOverlay('Analyzing...');
     statusDiv.textContent = 'Analyzing with GPT-4o…';
     parsed = await extractInfoVision(imageDataUrl);
     if (parsed) {
@@ -775,8 +775,8 @@ async function performScanFromCanvas(canvas) {
   }
 
   // Map extracted business type to canonical category (applies to Vision or OCR)
-  if (parsed && parsed.businessType) {
-    parsed.businessType = await mapToCompanyCategory(parsed.businessType);
+  if (parsed && parsed.category) {
+    parsed.category = await mapToCompanyCategory(parsed.category);
   }
 
   // Try to search for the store location using OneMap API
@@ -926,19 +926,82 @@ function extractInfo(rawText, ocrLines = []) {
   const openingHoursMatch = text.match(/(?:[01]?\d|2[0-3]):[0-5]\d\s*[-–]\s*(?:[01]?\d|2[0-3]):[0-5]\d/);
   let openingHours = openingHoursMatch ? openingHoursMatch[0].replace(/\s+/g, ' ') : '';
 
-  // Guess business category based on keywords
+  // Guess business category based on keywords using the official categories
   const categories = {
-    'restaurant|cafe|café|bakery|food': 'F&B',
-    'salon|spa|hair|beauty|nail': 'Beauty',
-    'clinic|medical|dental|pharmacy': 'Healthcare',
-    'book|stationery|gift|toy': 'Retail',
-    'gym|fitness|yoga': 'Fitness'
+    // Food and Beverage
+    'restaurant|cafe|café|bakery|food|dining|kitchen|bistro|eatery|bar|pub|fast food|takeaway|delivery': 'Food and Beverage',
+    
+    // Beauty Services
+    'salon|spa|hair|beauty|nail|barber|massage|facial|cosmetic|makeup': 'Beauty Services',
+    
+    // Healthcare
+    'clinic|medical|dental|pharmacy|hospital|doctor|dentist|physiotherapy|optometry': 'Healthcare',
+    
+    // General Merchandise / Retail
+    'shop|store|retail|mart|supermarket|grocery|convenience|book|stationery|gift|toy|clothing|fashion': 'General Merchandise',
+    
+    // Sports and Fitness
+    'gym|fitness|yoga|sport|exercise|training|martial arts|pilates|swimming': 'Sports and Fitness',
+    
+    // Auto
+    'car|auto|mechanic|garage|petrol|gas|workshop|tire|automotive|vehicle': 'Auto',
+    
+    // Financial
+    'bank|atm|insurance|finance|loan|money|exchange|investment|accounting': 'Financial',
+    
+    // Education
+    'school|education|tuition|learning|academy|institute|college|university|kindergarten': 'Education',
+    
+    // Hotel
+    'hotel|motel|inn|lodge|accommodation|hostel|resort|guesthouse': 'Hotel',
+    
+    // Professional Services
+    'law|lawyer|legal|consultant|office|service|agency|firm|real estate': 'Professional Services',
+    
+    // Home Services
+    'plumber|electrician|cleaning|repair|maintenance|contractor|handyman|renovation': 'Home Services',
+    
+    // Local Services
+    'laundry|dry clean|tailor|key|locksmith|photo|printing|courier|postal': 'Local Services',
+    
+    // Art
+    'art|gallery|studio|craft|design|creative|painting|sculpture|exhibition': 'Art',
+    
+    // Attractions
+    'museum|zoo|park|attraction|tourist|sightseeing|entertainment|cinema|theater': 'Attractions',
+    
+    // Essentials
+    'pharmacy|convenience|grocery|supermarket|essential|daily|necessities': 'Essentials',
+    
+    // Government Building
+    'government|municipal|council|office|public|administration|ministry|department': 'Government Building',
+    
+    // Mass Media
+    'media|newspaper|radio|tv|broadcasting|news|publication|printing press': 'Mass Media',
+    
+    // Nightlife
+    'club|nightclub|lounge|disco|karaoke|ktv|night|entertainment|party': 'Nightlife',
+    
+    // Religious Organization
+    'church|temple|mosque|synagogue|religious|worship|prayer|spiritual': 'Religious Organization',
+    
+    // Travel
+    'travel|tour|airline|booking|ticket|vacation|holiday|cruise|flight': 'Travel',
+    
+    // Commercial Building
+    'office|building|commercial|business|corporate|headquarters|plaza|center': 'Commercial Building',
+    
+    // Industrial
+    'factory|warehouse|industrial|manufacturing|production|plant|facility': 'Industrial',
+    
+    // Residential
+    'apartment|condo|residential|housing|home|villa|townhouse|flat': 'Residential'
   };
 
-  let businessType = 'Unknown';
+  let category = 'Unknown';
   for (const pattern in categories) {
     if (new RegExp(pattern, 'i').test(text)) {
-      businessType = categories[pattern];
+      category = categories[pattern];
       break;
     }
   }
@@ -959,7 +1022,7 @@ function extractInfo(rawText, ocrLines = []) {
     storeName,
     unitNumber,
     address,
-    businessType,
+    category,
     rawText: text
   };
 }
@@ -1010,17 +1073,95 @@ async function loadCompanyCategories() {
   return companyCategories;
 }
 
-async function mapToCompanyCategory(freeText = '') {
-  if (!freeText || freeText === 'Unknown' || freeText === 'Not Found') return freeText;
-  const txt = freeText.toLowerCase().trim();
-  await loadCompanyCategories();
-  if (!companyCategories.length) return freeText;
+async function mapToCompanyCategory(inputCategory = '') {
+  if (!inputCategory || inputCategory === 'Unknown' || inputCategory === 'Not Found') {
+    return inputCategory;
+  }
 
-  // Exact match against name or last segment
-  let match = companyCategories.find(cat => cat.name === txt || cat.last === txt);
-  if (match) return match.key;
+  // Define the official business categories
+  const officialCategories = [
+    'Art', 'Attractions', 'Auto', 'Beauty Services', 'Commercial Building',
+    'Education', 'Essentials', 'Financial', 'Food and Beverage', 'General Merchandise',
+    'Government Building', 'Healthcare', 'Home Services', 'Hotel', 'Industrial',
+    'Local Services', 'Mass Media', 'Nightlife', 'Physical Feature',
+    'Professional Services', 'Religious Organization', 'Residential',
+    'Sports and Fitness', 'Travel'
+  ];
 
-  // Sub-string containment
-  match = companyCategories.find(cat => txt.includes(cat.name) || cat.name.includes(txt) || txt.includes(cat.last));
-  return match ? match.key : freeText;
+  const query = inputCategory.toLowerCase().trim();
+  
+  // Direct match first (case-insensitive)
+  let directMatch = officialCategories.find(cat => cat.toLowerCase() === query);
+  if (directMatch) {
+    console.log(`Direct match: ${inputCategory} → ${directMatch}`);
+    return directMatch;
+  }
+
+  // Mapping for common variations and synonyms
+  const categoryMappings = {
+    // Food and Beverage variations
+    'f&b': 'Food and Beverage',
+    'food': 'Food and Beverage',
+    'restaurant': 'Food and Beverage',
+    'dining': 'Food and Beverage',
+    'cafe': 'Food and Beverage',
+    'bakery': 'Food and Beverage',
+    'eatery': 'Food and Beverage',
+    
+    // Beauty variations
+    'beauty': 'Beauty Services',
+    'salon': 'Beauty Services',
+    'spa': 'Beauty Services',
+    'barber': 'Beauty Services',
+    
+    // Retail variations
+    'retail': 'General Merchandise',
+    'shop': 'General Merchandise',
+    'store': 'General Merchandise',
+    'merchandise': 'General Merchandise',
+    'mart': 'General Merchandise',
+    
+    // Fitness variations
+    'fitness': 'Sports and Fitness',
+    'gym': 'Sports and Fitness',
+    'sport': 'Sports and Fitness',
+    'exercise': 'Sports and Fitness',
+    
+    // Medical variations
+    'medical': 'Healthcare',
+    'clinic': 'Healthcare',
+    'hospital': 'Healthcare',
+    'pharmacy': 'Healthcare',
+    
+    // Other common variations
+    'automotive': 'Auto',
+    'car': 'Auto',
+    'vehicle': 'Auto',
+    'finance': 'Financial',
+    'bank': 'Financial',
+    'school': 'Education',
+    'learning': 'Education',
+    'accommodation': 'Hotel',
+    'lodging': 'Hotel',
+    'office': 'Commercial Building',
+    'building': 'Commercial Building'
+  };
+
+  // Check for mapping variations
+  let mappedCategory = categoryMappings[query];
+  if (mappedCategory) {
+    console.log(`Mapped variation: ${inputCategory} → ${mappedCategory}`);
+    return mappedCategory;
+  }
+
+  // Partial matching - if input contains any official category name
+  for (const category of officialCategories) {
+    if (query.includes(category.toLowerCase()) || category.toLowerCase().includes(query)) {
+      console.log(`Partial match: ${inputCategory} → ${category}`);
+      return category;
+    }
+  }
+
+  console.log(`No match found for: ${inputCategory}, keeping original`);
+  return inputCategory;
 } 
