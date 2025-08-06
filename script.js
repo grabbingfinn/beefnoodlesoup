@@ -72,6 +72,11 @@ const scanningText = document.querySelector('.scanning-text');
 // --- NEW: Image upload elements ---
 const uploadBtn = document.getElementById('uploadBtn');
 const imageInput = document.getElementById('imageInput');
+// --- NEW: Zoom control elements ---
+const zoomInBtn = document.getElementById('zoomIn');
+const zoomOutBtn = document.getElementById('zoomOut');
+const zoomResetBtn = document.getElementById('zoomReset');
+const zoomLevelSpan = document.getElementById('zoomLevel');
 
 // Persistent scans storage
 let scans = [];
@@ -784,6 +789,119 @@ async function initCamera() {
 }
 
 initCamera();
+
+// --- Zoom functionality ---
+let currentZoom = 1.0;
+const minZoom = 1.0;
+const maxZoom = 5.0;
+const zoomStep = 0.2;
+
+// Zoom state management
+function updateZoomLevel(newZoom) {
+  currentZoom = Math.max(minZoom, Math.min(maxZoom, newZoom));
+  
+  // Apply zoom transform to video
+  video.style.transform = `scale(${currentZoom})`;
+  video.style.transformOrigin = 'center center';
+  
+  // Update zoom level display
+  zoomLevelSpan.textContent = `${currentZoom.toFixed(1)}x`;
+  
+  // Update button states
+  zoomOutBtn.disabled = currentZoom <= minZoom;
+  zoomInBtn.disabled = currentZoom >= maxZoom;
+  
+  // Show/hide reset button
+  zoomResetBtn.style.opacity = currentZoom > minZoom ? '1' : '0.6';
+}
+
+// Zoom control event listeners
+zoomInBtn.addEventListener('click', () => {
+  updateZoomLevel(currentZoom + zoomStep);
+});
+
+zoomOutBtn.addEventListener('click', () => {
+  updateZoomLevel(currentZoom - zoomStep);
+});
+
+zoomResetBtn.addEventListener('click', () => {
+  updateZoomLevel(minZoom);
+});
+
+// Mouse wheel zoom for desktop
+video.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? -zoomStep : zoomStep;
+  updateZoomLevel(currentZoom + delta);
+}, { passive: false });
+
+// Touch gesture handling for mobile devices
+let initialDistance = 0;
+let initialZoom = 1.0;
+let isZooming = false;
+
+// Helper function to get distance between two touch points
+function getDistance(touches) {
+  if (touches.length < 2) return 0;
+  const touch1 = touches[0];
+  const touch2 = touches[1];
+  return Math.sqrt(
+    Math.pow(touch2.clientX - touch1.clientX, 2) + 
+    Math.pow(touch2.clientY - touch1.clientY, 2)
+  );
+}
+
+// Touch start - initialize pinch-to-zoom
+video.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    isZooming = true;
+    initialDistance = getDistance(e.touches);
+    initialZoom = currentZoom;
+  }
+}, { passive: false });
+
+// Touch move - handle pinch-to-zoom
+video.addEventListener('touchmove', (e) => {
+  if (isZooming && e.touches.length === 2) {
+    e.preventDefault();
+    const currentDistance = getDistance(e.touches);
+    
+    if (initialDistance > 0) {
+      const scale = currentDistance / initialDistance;
+      const newZoom = initialZoom * scale;
+      updateZoomLevel(newZoom);
+    }
+  }
+}, { passive: false });
+
+// Touch end - cleanup pinch-to-zoom
+video.addEventListener('touchend', (e) => {
+  if (e.touches.length < 2) {
+    isZooming = false;
+    initialDistance = 0;
+  }
+}, { passive: false });
+
+// Keyboard shortcuts for zoom (optional enhancement)
+document.addEventListener('keydown', (e) => {
+  // Only handle zoom shortcuts when not typing in an input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  
+  if (e.key === '+' || e.key === '=') {
+    e.preventDefault();
+    updateZoomLevel(currentZoom + zoomStep);
+  } else if (e.key === '-' || e.key === '_') {
+    e.preventDefault();
+    updateZoomLevel(currentZoom - zoomStep);
+  } else if (e.key === '0' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    updateZoomLevel(minZoom);
+  }
+});
+
+// Initialize zoom controls
+updateZoomLevel(currentZoom);
 
 // --- Helper: run OCR + processing on any canvas source (camera or uploaded) ---
 async function performScanFromCanvas(canvas) {
