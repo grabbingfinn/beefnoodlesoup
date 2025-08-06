@@ -20,6 +20,17 @@
       <video id="camera" autoplay playsinline></video>
       <div id="progressBar"><div id="progressFill"></div></div>
       <button id="scanBtn" class="scan-btn">Scan</button>
+      
+      <!-- Zoom Controls -->
+      <div class="zoom-controls">
+        <button id="zoomOut" class="zoom-btn" title="Zoom Out">−</button>
+        <div class="zoom-indicator">
+          <span id="zoomLevel">1.0x</span>
+        </div>
+        <button id="zoomIn" class="zoom-btn" title="Zoom In">+</button>
+        <button id="zoomReset" class="zoom-reset-btn" title="Reset Zoom">⌂</button>
+      </div>
+      
       <div id="scanningOverlay" class="scanning-overlay">
         <div class="scanning-content">
           <div class="spinner"></div>
