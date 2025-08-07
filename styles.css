@@ -45,6 +45,7 @@
     color: #fff;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 12px;
       font-size: 20px;
       font-weight: 700;
@@ -400,6 +401,7 @@ th:nth-child(9), td:nth-child(9) { width: 140px; }  /* ACTIONS */
       header {
         padding: env(safe-area-inset-top, 0) 16px 16px 16px;
         font-size: 18px;
+        justify-content: center;
       }
       
       .scan-btn {
@@ -482,6 +484,7 @@ th:nth-child(9), td:nth-child(9) { width: 120px; }  /* ACTIONS */
       header {
         padding: env(safe-area-inset-top, 0) 12px 12px 12px;
         font-size: 16px;
+        justify-content: center;
       }
       
       th, td {
@@ -894,6 +897,71 @@ th:nth-child(9), td:nth-child(9) { width: 100px; }  /* ACTIONS */
         height: 28px;
         font-size: 14px;
         margin-left: 2px;
+      }
+    }
+
+    /* Duplicate Detection Styling */
+    .scanning-overlay.duplicate-warning {
+      background: rgba(255, 107, 53, 0.8); /* Orange warning background */
+    }
+
+    .duplicate-message {
+      margin-top: 16px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      color: var(--text);
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      max-width: 280px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .duplicate-details {
+      line-height: 1.4;
+    }
+
+    .duplicate-details strong {
+      color: #ff6b35;
+      font-size: 16px;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .duplicate-details small {
+      color: var(--text-secondary);
+      font-size: 12px;
+      display: block;
+      margin-bottom: 8px;
+      word-break: break-word;
+    }
+
+    .duplicate-details em {
+      color: #ff6b35;
+      font-size: 13px;
+      font-style: normal;
+      font-weight: 600;
+    }
+
+    /* Mobile duplicate message adjustments */
+    @media (max-width: 480px) {
+      .duplicate-message {
+        margin-top: 12px;
+        padding: 12px;
+        max-width: 240px;
+      }
+
+      .duplicate-details strong {
+        font-size: 14px;
+      }
+
+      .duplicate-details small {
+        font-size: 11px;
+      }
+
+      .duplicate-details em {
+        font-size: 12px;
       }
     }
 
