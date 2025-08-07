@@ -903,6 +903,90 @@ document.addEventListener('keydown', (e) => {
 // Initialize zoom controls
 updateZoomLevel(currentZoom);
 
+// --- Duplicate Detection Functions ---
+function isDuplicateStore(newStore) {
+  // Check if a store with the same name and address already exists
+  return scans.some(existingStore => {
+    // Normalize strings for comparison (trim whitespace, convert to lowercase)
+    const existingName = (existingStore.storeName || '').trim().toLowerCase();
+    const newName = (newStore.storeName || '').trim().toLowerCase();
+    const existingAddress = (existingStore.address || '').trim().toLowerCase();
+    const newAddress = (newStore.address || '').trim().toLowerCase();
+    
+    // Skip comparison if either name is "Not Found" or empty
+    if (!existingName || !newName || existingName === 'not found' || newName === 'not found') {
+      return false;
+    }
+    
+    // Skip comparison if either address is "Not Found" or empty
+    if (!existingAddress || !newAddress || existingAddress === 'not found' || newAddress === 'not found') {
+      return false;
+    }
+    
+    // Consider it a duplicate if both name and address match exactly
+    const nameMatch = existingName === newName;
+    const addressMatch = existingAddress === newAddress;
+    
+    return nameMatch && addressMatch;
+  });
+}
+
+function showDuplicateDetected(storeName, address) {
+  // Hide the scanning overlay first
+  hideScanningOverlay();
+  
+  // Show duplicate detection overlay with custom styling
+  if (scanningOverlay && scanningText) {
+    scanningText.textContent = '⚠️ Duplicate Detected';
+    scanningOverlay.classList.add('show', 'duplicate-warning');
+    
+    // Hide the spinner for duplicate warning
+    const spinner = document.querySelector('.spinner');
+    if (spinner) {
+      spinner.style.display = 'none';
+    }
+    
+    // Create detailed message
+    const duplicateMessage = document.createElement('div');
+    duplicateMessage.className = 'duplicate-message';
+    duplicateMessage.innerHTML = `
+      <div class="duplicate-details">
+        <strong>${storeName}</strong><br>
+        <small>${address}</small><br>
+        <em>Already exists in your data</em>
+      </div>
+    `;
+    
+    // Add message to scanning content
+    const scanningContent = document.querySelector('.scanning-content');
+    if (scanningContent) {
+      scanningContent.appendChild(duplicateMessage);
+    }
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      scanningOverlay.classList.remove('show', 'duplicate-warning');
+      if (duplicateMessage && duplicateMessage.parentNode) {
+        duplicateMessage.parentNode.removeChild(duplicateMessage);
+      }
+      // Restore spinner visibility for next scan
+      if (spinner) {
+        spinner.style.display = 'block';
+      }
+    }, 3000);
+  }
+  
+  // Also show in status div as backup
+  statusDiv.textContent = `Duplicate detected: "${storeName}" already exists`;
+  statusDiv.style.color = '#ff6b35';
+  setTimeout(() => {
+    statusDiv.textContent = '';
+    statusDiv.style.color = '';
+  }, 3000);
+  
+  console.log(`Duplicate store detected and rejected: "${storeName}" at "${address}"`);
+}
+
 // --- Helper: run OCR + processing on any canvas source (camera or uploaded) ---
 async function performScanFromCanvas(canvas) {
   showScanningOverlay('Scanning...');
@@ -990,6 +1074,16 @@ async function performScanFromCanvas(canvas) {
     { lat: finalLat, lng: finalLng, address: address },
     parsed
   );
+
+  // Check for duplicates before adding
+  if (isDuplicateStore(info)) {
+    // Show duplicate detection message
+    showDuplicateDetected(info.storeName, info.address);
+    statusDiv.textContent = '';
+    progressBar.style.display = 'none';
+    return; // Don't add duplicate
+  }
+
   scans.push(info);
   saveScans();
   renderTable();
