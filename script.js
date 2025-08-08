@@ -1650,8 +1650,16 @@ function updateUserLocation(lat, lng, heading = null, accuracy = null) {
     });
 
     userLocationMarker = L.marker(location, { icon: userIcon });
-    if (miniMap) userLocationMarker.addTo(miniMap);
-    if (fullMap) userLocationMarker.addTo(fullMap);
+    
+    // Add to mini map
+    if (miniMap) {
+      userLocationMarker.addTo(miniMap);
+    }
+    
+    // Add to full map only if it exists and is currently visible
+    if (fullMap) {
+      userLocationMarker.addTo(fullMap);
+    }
   }
 
   // Update accuracy circle
@@ -1668,8 +1676,16 @@ function updateUserLocation(lat, lng, heading = null, accuracy = null) {
         weight: 1,
         opacity: 0.3
       });
-      if (miniMap) userAccuracyCircle.addTo(miniMap);
-      if (fullMap) userAccuracyCircle.addTo(fullMap);
+      
+      // Add to mini map
+      if (miniMap) {
+        userAccuracyCircle.addTo(miniMap);
+      }
+      
+      // Add to full map if it exists
+      if (fullMap) {
+        userAccuracyCircle.addTo(fullMap);
+      }
     }
   }
 
@@ -1889,7 +1905,11 @@ document.addEventListener('DOMContentLoaded', function() {
       fullMapOverlay.classList.remove('hidden');
       // Invalidate size after animation
       setTimeout(() => {
-        if (fullMap) fullMap.invalidateSize();
+        if (fullMap) {
+          fullMap.invalidateSize();
+          // Ensure user location is visible on full map
+          syncUserLocationToFullMap();
+        }
       }, 300);
     });
   }
@@ -1903,6 +1923,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Route control buttons
   const clearRouteBtn = document.getElementById('clearRouteBtn');
   const optimizeRouteBtn = document.getElementById('optimizeRouteBtn');
+  const centerOnUserBtn = document.getElementById('centerOnUserBtn');
 
   if (clearRouteBtn) {
     clearRouteBtn.addEventListener('click', clearRoute);
@@ -1910,6 +1931,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
   if (optimizeRouteBtn) {
     optimizeRouteBtn.addEventListener('click', optimizeRoute);
+  }
+
+  if (centerOnUserBtn) {
+    centerOnUserBtn.addEventListener('click', function() {
+      if (lastUserLocation && fullMap) {
+        // Ensure user location markers are on the full map
+        syncUserLocationToFullMap();
+        
+        // Center on user location with appropriate zoom
+        const currentZoom = fullMap.getZoom();
+        const targetZoom = currentZoom < 16 ? 16 : currentZoom;
+        fullMap.setView([lastUserLocation.lat, lastUserLocation.lng], targetZoom, { animate: true });
+        
+        // Enable follow mode
+        followUserLocation = true;
+        updateFollowButtonState();
+        
+        console.log('Centered full map on user location');
+      } else {
+        alert('User location not available. Please ensure location services are enabled.');
+      }
+    });
   }
 
   // Manual location request button
@@ -2125,6 +2168,33 @@ function updateFollowButtonState() {
       followLocationBtn.classList.remove('active');
       followLocationBtn.title = 'Follow Location (Click to enable)';
     }
+  }
+}
+
+// Sync user location to full map when it's opened
+function syncUserLocationToFullMap() {
+  if (!fullMap || !lastUserLocation) return;
+  
+  console.log('Syncing user location to full map');
+  
+  // Add user location marker to full map if it exists but isn't on the map
+  if (userLocationMarker && !fullMap.hasLayer(userLocationMarker)) {
+    userLocationMarker.addTo(fullMap);
+    console.log('Added user location marker to full map');
+  }
+  
+  // Add accuracy circle to full map if it exists but isn't on the map
+  if (userAccuracyCircle && !fullMap.hasLayer(userAccuracyCircle)) {
+    userAccuracyCircle.addTo(fullMap);
+    console.log('Added accuracy circle to full map');
+  }
+  
+  // Center the full map on user location if following is enabled
+  if (followUserLocation) {
+    const currentZoom = fullMap.getZoom();
+    const targetZoom = currentZoom < 14 ? 16 : currentZoom; // Ensure reasonable zoom level
+    fullMap.setView([lastUserLocation.lat, lastUserLocation.lng], targetZoom, { animate: true });
+    console.log('Centered full map on user location');
   }
 }
 
