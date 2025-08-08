@@ -1915,8 +1915,42 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   if (mapCloseBtn && fullMapOverlay) {
-    mapCloseBtn.addEventListener('click', function() {
+    mapCloseBtn.addEventListener('click', function(e) {
+      console.log('Close button clicked');
+      e.preventDefault();
+      e.stopPropagation();
       fullMapOverlay.classList.add('hidden');
+    });
+    
+    // Also add touch event for mobile
+    mapCloseBtn.addEventListener('touchend', function(e) {
+      console.log('Close button touched');
+      e.preventDefault();
+      e.stopPropagation();
+      fullMapOverlay.classList.add('hidden');
+    });
+    
+    console.log('Map close button event listeners added');
+  } else {
+    console.error('Map close button or overlay not found:', { mapCloseBtn, fullMapOverlay });
+  }
+
+  // Add backup close methods
+  if (fullMapOverlay) {
+    // Close on overlay background click
+    fullMapOverlay.addEventListener('click', function(e) {
+      if (e.target === fullMapOverlay) {
+        console.log('Overlay background clicked');
+        fullMapOverlay.classList.add('hidden');
+      }
+    });
+    
+    // Close on escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && !fullMapOverlay.classList.contains('hidden')) {
+        console.log('Escape key pressed');
+        fullMapOverlay.classList.add('hidden');
+      }
     });
   }
 
@@ -2173,28 +2207,68 @@ function updateFollowButtonState() {
 
 // Sync user location to full map when it's opened
 function syncUserLocationToFullMap() {
-  if (!fullMap || !lastUserLocation) return;
+  console.log('syncUserLocationToFullMap called', { 
+    fullMap: !!fullMap, 
+    lastUserLocation: !!lastUserLocation,
+    userLocationMarker: !!userLocationMarker 
+  });
   
-  console.log('Syncing user location to full map');
-  
-  // Add user location marker to full map if it exists but isn't on the map
-  if (userLocationMarker && !fullMap.hasLayer(userLocationMarker)) {
-    userLocationMarker.addTo(fullMap);
-    console.log('Added user location marker to full map');
+  if (!fullMap) {
+    console.error('Full map not available');
+    return;
   }
   
-  // Add accuracy circle to full map if it exists but isn't on the map
-  if (userAccuracyCircle && !fullMap.hasLayer(userAccuracyCircle)) {
-    userAccuracyCircle.addTo(fullMap);
-    console.log('Added accuracy circle to full map');
+  if (!lastUserLocation) {
+    console.warn('No user location available to sync');
+    return;
   }
   
-  // Center the full map on user location if following is enabled
-  if (followUserLocation) {
-    const currentZoom = fullMap.getZoom();
-    const targetZoom = currentZoom < 14 ? 16 : currentZoom; // Ensure reasonable zoom level
-    fullMap.setView([lastUserLocation.lat, lastUserLocation.lng], targetZoom, { animate: true });
-    console.log('Centered full map on user location');
+  try {
+    // Force recreate user location marker for full map if needed
+    if (lastUserLocation) {
+      const location = [lastUserLocation.lat, lastUserLocation.lng];
+      
+      // Create a new marker specifically for full map to avoid conflicts
+      const userIcon = L.divIcon({
+        className: 'user-location-marker',
+        html: `
+          <div class="user-location-container">
+            <div class="user-dot-pulse"></div>
+            <div class="user-dot">
+              <div class="user-dot-inner"></div>
+              <div class="user-dot-direction"></div>
+            </div>
+          </div>
+        `,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+      });
+      
+      // Remove existing marker if it exists
+      fullMap.eachLayer(function(layer) {
+        if (layer.options && layer.options.className === 'user-location-marker') {
+          fullMap.removeLayer(layer);
+        }
+      });
+      
+      // Add new marker
+      const fullMapUserMarker = L.marker(location, { icon: userIcon });
+      fullMapUserMarker.addTo(fullMap);
+      console.log('Added user location marker to full map at:', location);
+      
+      // Center the full map on user location
+      const currentZoom = fullMap.getZoom();
+      const targetZoom = currentZoom < 14 ? 16 : currentZoom;
+      fullMap.setView(location, targetZoom, { animate: true });
+      console.log('Centered full map on user location');
+      
+      // Enable follow mode
+      followUserLocation = true;
+      updateFollowButtonState();
+    }
+    
+  } catch (error) {
+    console.error('Error syncing user location to full map:', error);
   }
 }
 
