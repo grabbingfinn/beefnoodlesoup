@@ -970,3 +970,219 @@ th:nth-child(9), td:nth-child(9) { width: 100px; }  /* ACTIONS */
     .btn:active {
       transform: scale(0.98);
     }
+
+    /* ===== MAP CONTAINER STYLES ===== */
+    .map-container {
+      background: white;
+      border-radius: 12px 12px 0 0;
+      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      z-index: 10;
+    }
+
+    .map-header {
+      background: var(--primary);
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 44px;
+    }
+
+    .map-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .map-info span {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    #routeProgress {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .map-expand-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .map-expand-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.05);
+    }
+
+    .mini-map {
+      height: 25vh;
+      min-height: 180px;
+      max-height: 250px;
+      position: relative;
+      background: #f5f5f5;
+    }
+
+    /* Full Screen Map Overlay */
+    .full-map-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: white;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .full-map-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(100%);
+    }
+
+    .full-map-header {
+      background: var(--primary);
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .full-map-header h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .map-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .map-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .map-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .map-close-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .map-close-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .full-map {
+      flex: 1;
+      position: relative;
+      background: #f5f5f5;
+    }
+
+    .map-footer {
+      background: white;
+      padding: 12px 20px;
+      border-top: 1px solid #e0e0e0;
+      box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .route-stats {
+      display: flex;
+      gap: 20px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .route-stats span {
+      font-weight: 500;
+    }
+
+    /* Mobile responsiveness for map */
+    @media (max-width: 480px) {
+      .map-header {
+        padding: 10px 12px;
+      }
+
+      .map-info span {
+        font-size: 13px;
+      }
+
+      .mini-map {
+        min-height: 160px;
+      }
+
+      .full-map-header {
+        padding: 12px 16px;
+      }
+
+      .full-map-header h3 {
+        font-size: 16px;
+      }
+
+      .route-stats {
+        gap: 12px;
+        font-size: 13px;
+      }
+
+      .map-footer {
+        padding: 10px 16px;
+      }
+    }
+
+    /* Custom map marker styles */
+    .user-location-marker {
+      background: transparent !important;
+      border: none !important;
+    }
+
+    .user-dot {
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      transition: transform 0.3s ease;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    }
