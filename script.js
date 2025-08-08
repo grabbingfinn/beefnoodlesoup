@@ -1436,4 +1436,316 @@ async function mapToCompanyCategory(inputCategory = '') {
 
   console.log(`No match found for: ${inputCategory}, keeping original`);
   return inputCategory;
-} 
+}
+
+// ===== MAP FUNCTIONALITY =====
+let miniMap = null;
+let fullMap = null;
+let userLocationMarker = null;
+let routePoints = [];
+let routeLine = null;
+let teamMarkers = [];
+
+// Initialize maps
+function initializeMaps() {
+  // Initialize mini map
+  if (!miniMap) {
+    miniMap = L.map('miniMap', {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false
+    }).setView([1.3521, 103.8198], 12); // Singapore center
+
+    // Use OneMap Singapore tiles
+    L.tileLayer('https://maps-{s}.onemap.sg/v3/Default/{z}/{x}/{y}.png', {
+      subdomains: ['a', 'b', 'c', 'd'],
+      attribution: '&copy; <a href="https://www.onemap.sg/">OneMap</a>',
+      maxZoom: 18
+    }).addTo(miniMap);
+  }
+
+  // Initialize full map
+  if (!fullMap) {
+    fullMap = L.map('fullMap', {
+      zoomControl: true,
+      attributionControl: true
+    }).setView([1.3521, 103.8198], 12);
+
+    L.tileLayer('https://maps-{s}.onemap.sg/v3/Default/{z}/{x}/{y}.png', {
+      subdomains: ['a', 'b', 'c', 'd'],
+      attribution: '&copy; <a href="https://www.onemap.sg/">OneMap</a>',
+      maxZoom: 18
+    }).addTo(fullMap);
+
+    // Add click handler for route planning
+    fullMap.on('click', function(e) {
+      addRoutePoint(e.latlng);
+    });
+  }
+}
+
+// Update user location on both maps
+function updateUserLocation(lat, lng, heading = null) {
+  const location = [lat, lng];
+
+  // Create or update user marker
+  if (userLocationMarker) {
+    userLocationMarker.setLatLng(location);
+  } else {
+    // Custom user location icon with direction arrow
+    const userIcon = L.divIcon({
+      className: 'user-location-marker',
+      html: `<div class="user-dot" style="transform: rotate(${heading || 0}deg);">📍</div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15]
+    });
+
+    userLocationMarker = L.marker(location, { icon: userIcon });
+    if (miniMap) userLocationMarker.addTo(miniMap);
+    if (fullMap) userLocationMarker.addTo(fullMap);
+  }
+
+  // Center mini map on user location
+  if (miniMap) {
+    miniMap.setView(location, miniMap.getZoom());
+  }
+
+  // Update status
+  const mapStatus = document.getElementById('mapStatus');
+  if (mapStatus) {
+    mapStatus.textContent = `📍 Location updated`;
+  }
+}
+
+// Add route point for planning
+function addRoutePoint(latlng) {
+  const point = {
+    lat: latlng.lat,
+    lng: latlng.lng,
+    id: Date.now(),
+    marker: null
+  };
+
+  // Create marker
+  const marker = L.marker([point.lat, point.lng], {
+    draggable: true
+  }).addTo(fullMap);
+
+  marker.bindPopup(`Point ${routePoints.length + 1}<br><button onclick="removeRoutePoint(${point.id})">Remove</button>`);
+  
+  // Update marker position when dragged
+  marker.on('dragend', function() {
+    const pos = marker.getLatLng();
+    point.lat = pos.lat;
+    point.lng = pos.lng;
+    updateRouteDisplay();
+  });
+
+  point.marker = marker;
+  routePoints.push(point);
+  
+  updateRouteDisplay();
+}
+
+// Remove route point
+function removeRoutePoint(pointId) {
+  const index = routePoints.findIndex(p => p.id === pointId);
+  if (index !== -1) {
+    const point = routePoints[index];
+    if (point.marker) {
+      fullMap.removeLayer(point.marker);
+    }
+    routePoints.splice(index, 1);
+    updateRouteDisplay();
+  }
+}
+
+// Update route line and stats
+function updateRouteDisplay() {
+  // Remove existing route line
+  if (routeLine) {
+    fullMap.removeLayer(routeLine);
+    routeLine = null;
+  }
+
+  if (routePoints.length > 1) {
+    // Create route line
+    const latlngs = routePoints.map(p => [p.lat, p.lng]);
+    routeLine = L.polyline(latlngs, {
+      color: '#00b14f',
+      weight: 4,
+      opacity: 0.7
+    }).addTo(fullMap);
+
+    // Calculate route statistics
+    let totalDistance = 0;
+    for (let i = 0; i < routePoints.length - 1; i++) {
+      const p1 = routePoints[i];
+      const p2 = routePoints[i + 1];
+      totalDistance += getDistance(p1.lat, p1.lng, p2.lat, p2.lng);
+    }
+
+    // Update UI
+    const routeDistance = document.getElementById('routeDistance');
+    const routeTime = document.getElementById('routeTime');
+    const routePointsEl = document.getElementById('routePoints');
+
+    if (routeDistance) routeDistance.textContent = `Distance: ${totalDistance.toFixed(1)} km`;
+    if (routeTime) routeTime.textContent = `Time: ${Math.ceil(totalDistance * 12)} min`; // 5 km/h walking speed
+    if (routePointsEl) routePointsEl.textContent = `Points: ${routePoints.length}`;
+
+    // Update route progress
+    const routeProgress = document.getElementById('routeProgress');
+    if (routeProgress) {
+      routeProgress.textContent = `${routePoints.length} stops planned`;
+    }
+  } else {
+    // Clear stats
+    const routeDistance = document.getElementById('routeDistance');
+    const routeTime = document.getElementById('routeTime');
+    const routePointsEl = document.getElementById('routePoints');
+    const routeProgress = document.getElementById('routeProgress');
+
+    if (routeDistance) routeDistance.textContent = 'Distance: 0 km';
+    if (routeTime) routeTime.textContent = 'Time: 0 min';
+    if (routePointsEl) routePointsEl.textContent = 'Points: 0';
+    if (routeProgress) routeProgress.textContent = '';
+  }
+}
+
+// Optimize route using nearest neighbor algorithm
+function optimizeRoute() {
+  if (routePoints.length < 3) return;
+
+  // Get user location as starting point
+  let currentLat = currentLocation.lat;
+  let currentLng = currentLocation.lng;
+
+  if (!currentLat || !currentLng) {
+    alert('Current location not available for optimization');
+    return;
+  }
+
+  const optimized = [];
+  const remaining = [...routePoints];
+
+  // Start from current location
+  while (remaining.length > 0) {
+    let nearestIndex = 0;
+    let nearestDistance = Infinity;
+
+    // Find nearest unvisited point
+    for (let i = 0; i < remaining.length; i++) {
+      const distance = getDistance(currentLat, currentLng, remaining[i].lat, remaining[i].lng);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = i;
+      }
+    }
+
+    // Move to optimized array
+    const nearest = remaining.splice(nearestIndex, 1)[0];
+    optimized.push(nearest);
+    currentLat = nearest.lat;
+    currentLng = nearest.lng;
+  }
+
+  // Update route points array
+  routePoints = optimized;
+  
+  // Update markers popup text
+  routePoints.forEach((point, index) => {
+    if (point.marker) {
+      point.marker.bindPopup(`Point ${index + 1}<br><button onclick="removeRoutePoint(${point.id})">Remove</button>`);
+    }
+  });
+
+  updateRouteDisplay();
+  
+  alert(`Route optimized! Total distance: ${document.getElementById('routeDistance').textContent.split(': ')[1]}`);
+}
+
+// Clear all route points
+function clearRoute() {
+  routePoints.forEach(point => {
+    if (point.marker) {
+      fullMap.removeLayer(point.marker);
+    }
+  });
+  routePoints = [];
+  updateRouteDisplay();
+}
+
+// Map UI event handlers
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize maps when page loads
+  setTimeout(initializeMaps, 500);
+
+  // Map expand button
+  const mapExpandBtn = document.getElementById('mapExpandBtn');
+  const fullMapOverlay = document.getElementById('fullMapOverlay');
+  const mapCloseBtn = document.getElementById('mapCloseBtn');
+
+  if (mapExpandBtn && fullMapOverlay) {
+    mapExpandBtn.addEventListener('click', function() {
+      fullMapOverlay.classList.remove('hidden');
+      // Invalidate size after animation
+      setTimeout(() => {
+        if (fullMap) fullMap.invalidateSize();
+      }, 300);
+    });
+  }
+
+  if (mapCloseBtn && fullMapOverlay) {
+    mapCloseBtn.addEventListener('click', function() {
+      fullMapOverlay.classList.add('hidden');
+    });
+  }
+
+  // Route control buttons
+  const clearRouteBtn = document.getElementById('clearRouteBtn');
+  const optimizeRouteBtn = document.getElementById('optimizeRouteBtn');
+
+  if (clearRouteBtn) {
+    clearRouteBtn.addEventListener('click', clearRoute);
+  }
+
+  if (optimizeRouteBtn) {
+    optimizeRouteBtn.addEventListener('click', optimizeRoute);
+  }
+
+  // Update user location when GPS position changes
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(
+      function(position) {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const heading = position.coords.heading;
+        
+        updateUserLocation(lat, lng, heading);
+        
+        // Update global current location
+        currentLocation.lat = lat;
+        currentLocation.lng = lng;
+      },
+      function(error) {
+        console.log('Geolocation error:', error);
+        const mapStatus = document.getElementById('mapStatus');
+        if (mapStatus) {
+          mapStatus.textContent = '📍 Location unavailable';
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 30000,
+        timeout: 10000
+      }
+    );
+  }
+});
+
+// Make functions globally available
+window.removeRoutePoint = removeRoutePoint; 
