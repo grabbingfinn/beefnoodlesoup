@@ -1047,6 +1047,22 @@ th:nth-child(9), td:nth-child(9) { width: 100px; }  /* ACTIONS */
       max-height: 250px;
       position: relative;
       background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mini-map::before {
+      content: '🗺️ Loading map...';
+      position: absolute;
+      color: #666;
+      font-size: 14px;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .mini-map.loaded::before {
+      display: none;
     }
 
     /* Full Screen Map Overlay */
@@ -1130,6 +1146,22 @@ th:nth-child(9), td:nth-child(9) { width: 100px; }  /* ACTIONS */
       flex: 1;
       position: relative;
       background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .full-map::before {
+      content: '🗺️ Loading map...';
+      position: absolute;
+      color: #666;
+      font-size: 16px;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .full-map.loaded::before {
+      display: none;
     }
 
     .map-footer {
