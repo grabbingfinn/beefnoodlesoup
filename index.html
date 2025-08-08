@@ -38,6 +38,39 @@
         </div>
       </div>
     </div>
+
+    <!-- Collapsible Map Section -->
+    <div id="mapContainer" class="map-container">
+      <div class="map-header">
+        <div class="map-info">
+          <span id="mapStatus">📍 Loading location...</span>
+          <span id="routeProgress"></span>
+        </div>
+        <button id="mapExpandBtn" class="map-expand-btn" title="Expand Map">⛶</button>
+      </div>
+      <div id="miniMap" class="mini-map"></div>
+      
+      <!-- Full Screen Map Overlay -->
+      <div id="fullMapOverlay" class="full-map-overlay hidden">
+        <div class="full-map-header">
+          <h3>Route Planning</h3>
+          <div class="map-controls">
+            <button id="clearRouteBtn" class="map-btn">Clear Route</button>
+            <button id="optimizeRouteBtn" class="map-btn">Optimize</button>
+            <button id="mapCloseBtn" class="map-close-btn">×</button>
+          </div>
+        </div>
+        <div id="fullMap" class="full-map"></div>
+        <div class="map-footer">
+          <div class="route-stats">
+            <span id="routeDistance">Distance: 0 km</span>
+            <span id="routeTime">Time: 0 min</span>
+            <span id="routePoints">Points: 0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="toolbar">
         <button id="exportBtn" class="btn">Export CSV</button>
@@ -71,6 +104,10 @@
     </div>
   </main>
 
+  <!-- Leaflet.js for Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
   <!-- OCR Library -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
   <!-- Spell correction library -->
