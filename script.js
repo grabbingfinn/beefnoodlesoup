@@ -1442,9 +1442,12 @@ async function mapToCompanyCategory(inputCategory = '') {
 let miniMap = null;
 let fullMap = null;
 let userLocationMarker = null;
+let userAccuracyCircle = null;
 let routePoints = [];
 let routeLine = null;
 let teamMarkers = [];
+let followUserLocation = true;
+let lastUserLocation = null;
 
 // Initialize maps with fallback tile sources
 function initializeMaps() {
@@ -1518,6 +1521,11 @@ function initializeMaps() {
       console.error('Error initializing full map:', error);
     }
   }
+  
+  // Add interaction handlers after both maps are initialized
+  setTimeout(() => {
+    addMapInteractionHandlers();
+  }, 500);
 }
 
 // Add tile layers with multiple fallback sources
@@ -1603,18 +1611,40 @@ function addTileLayersToMap(map) {
   }, 1000);
 }
 
-// Update user location on both maps
-function updateUserLocation(lat, lng, heading = null) {
+// Update user location on both maps with smooth tracking
+function updateUserLocation(lat, lng, heading = null, accuracy = null) {
   const location = [lat, lng];
+  const isFirstLocation = !lastUserLocation;
+  lastUserLocation = { lat, lng };
 
-  // Create or update user marker
+  // Create Google Maps style blue dot with accuracy circle
   if (userLocationMarker) {
+    // Smooth animation to new position
     userLocationMarker.setLatLng(location);
+    
+    // Update heading if available
+    if (heading !== null) {
+      const markerElement = userLocationMarker.getElement();
+      if (markerElement) {
+        const dot = markerElement.querySelector('.user-dot');
+        if (dot) {
+          dot.style.transform = `rotate(${heading}deg)`;
+        }
+      }
+    }
   } else {
-    // Custom user location icon with direction arrow
+    // Create blue location dot similar to Google Maps
     const userIcon = L.divIcon({
       className: 'user-location-marker',
-      html: `<div class="user-dot" style="transform: rotate(${heading || 0}deg);">📍</div>`,
+      html: `
+        <div class="user-location-container">
+          <div class="user-dot-pulse"></div>
+          <div class="user-dot" style="transform: rotate(${heading || 0}deg);">
+            <div class="user-dot-inner"></div>
+            <div class="user-dot-direction"></div>
+          </div>
+        </div>
+      `,
       iconSize: [30, 30],
       iconAnchor: [15, 15]
     });
@@ -1624,15 +1654,53 @@ function updateUserLocation(lat, lng, heading = null) {
     if (fullMap) userLocationMarker.addTo(fullMap);
   }
 
-  // Center mini map on user location
-  if (miniMap) {
-    miniMap.setView(location, miniMap.getZoom());
+  // Update accuracy circle
+  if (accuracy && accuracy < 100) { // Only show if accuracy is reasonable
+    if (userAccuracyCircle) {
+      userAccuracyCircle.setLatLng(location);
+      userAccuracyCircle.setRadius(accuracy);
+    } else {
+      userAccuracyCircle = L.circle(location, {
+        radius: accuracy,
+        color: '#4285f4',
+        fillColor: '#4285f4',
+        fillOpacity: 0.1,
+        weight: 1,
+        opacity: 0.3
+      });
+      if (miniMap) userAccuracyCircle.addTo(miniMap);
+      if (fullMap) userAccuracyCircle.addTo(fullMap);
+    }
+  }
+
+  // Follow user location (like Google Maps)
+  if (followUserLocation) {
+    const zoomLevel = isFirstLocation ? 16 : null; // Zoom in on first location, maintain zoom after
+    
+    // Smooth pan to user location on mini map
+    if (miniMap) {
+      if (zoomLevel) {
+        miniMap.setView(location, zoomLevel, { animate: true, duration: 1.0 });
+      } else {
+        miniMap.panTo(location, { animate: true, duration: 0.5 });
+      }
+    }
+    
+    // Also update full map if it's open
+    if (fullMap && !document.getElementById('fullMapOverlay').classList.contains('hidden')) {
+      if (zoomLevel) {
+        fullMap.setView(location, zoomLevel, { animate: true, duration: 1.0 });
+      } else {
+        fullMap.panTo(location, { animate: true, duration: 0.5 });
+      }
+    }
   }
 
   // Update status
   const mapStatus = document.getElementById('mapStatus');
   if (mapStatus) {
-    mapStatus.textContent = `📍 Location updated`;
+    const accuracyText = accuracy ? ` (±${Math.round(accuracy)}m)` : '';
+    mapStatus.textContent = `📍 Location tracking${accuracyText}`;
   }
 }
 
@@ -1814,6 +1882,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const fullMapOverlay = document.getElementById('fullMapOverlay');
   const mapCloseBtn = document.getElementById('mapCloseBtn');
   const requestLocationBtn = document.getElementById('requestLocationBtn');
+  const followLocationBtn = document.getElementById('followLocationBtn');
 
   if (mapExpandBtn && fullMapOverlay) {
     mapExpandBtn.addEventListener('click', function() {
@@ -1847,6 +1916,27 @@ document.addEventListener('DOMContentLoaded', function() {
   if (requestLocationBtn) {
     requestLocationBtn.addEventListener('click', function() {
       requestLocationPermission();
+    });
+  }
+
+  // Follow location toggle button
+  if (followLocationBtn) {
+    // Set initial state
+    updateFollowButtonState();
+    
+    followLocationBtn.addEventListener('click', function() {
+      followUserLocation = !followUserLocation;
+      updateFollowButtonState();
+      
+      // If enabling follow mode and we have a location, center on it
+      if (followUserLocation && lastUserLocation) {
+        if (miniMap) {
+          miniMap.setView([lastUserLocation.lat, lastUserLocation.lng], miniMap.getZoom(), { animate: true });
+        }
+        if (fullMap && !fullMapOverlay.classList.contains('hidden')) {
+          fullMap.setView([lastUserLocation.lat, lastUserLocation.lng], fullMap.getZoom(), { animate: true });
+        }
+      }
     });
   }
 
@@ -1895,8 +1985,9 @@ async function requestLocationPermission() {
     const lat = position.coords.latitude;
     const lng = position.coords.longitude;
     const heading = position.coords.heading;
+    const accuracy = position.coords.accuracy;
     
-    updateUserLocation(lat, lng, heading);
+    updateUserLocation(lat, lng, heading, accuracy);
     currentLocation.lat = lat;
     currentLocation.lng = lng;
 
@@ -1919,13 +2010,11 @@ function startLocationWatching() {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
       const heading = position.coords.heading;
+      const accuracy = position.coords.accuracy;
       
-      updateUserLocation(lat, lng, heading);
+      updateUserLocation(lat, lng, heading, accuracy);
       currentLocation.lat = lat;
       currentLocation.lng = lng;
-      
-      const mapStatus = document.getElementById('mapStatus');
-      if (mapStatus) mapStatus.textContent = '📍 Location tracking';
     },
     function(error) {
       console.log('Watch position error:', error);
@@ -1988,8 +2077,9 @@ function retryLocationWithLowerAccuracy() {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
       const heading = position.coords.heading;
+      const accuracy = position.coords.accuracy;
       
-      updateUserLocation(lat, lng, heading);
+      updateUserLocation(lat, lng, heading, accuracy);
       currentLocation.lat = lat;
       currentLocation.lng = lng;
       
@@ -2021,6 +2111,43 @@ function showLocationInstructions() {
     setTimeout(() => {
       alert('To enable location:\n\n1. Go to Settings > Privacy & Security > Location Services\n2. Turn on Location Services\n3. Find Safari in the list\n4. Select "While Using App"\n5. Refresh this page');
     }, 1000);
+  }
+}
+
+// Update follow button visual state
+function updateFollowButtonState() {
+  const followLocationBtn = document.getElementById('followLocationBtn');
+  if (followLocationBtn) {
+    if (followUserLocation) {
+      followLocationBtn.classList.add('active');
+      followLocationBtn.title = 'Following Location (Click to disable)';
+    } else {
+      followLocationBtn.classList.remove('active');
+      followLocationBtn.title = 'Follow Location (Click to enable)';
+    }
+  }
+}
+
+// Add map interaction handlers to disable following when user manually moves map
+function addMapInteractionHandlers() {
+  if (miniMap) {
+    miniMap.on('dragstart', function() {
+      // User is manually panning, disable follow mode
+      if (followUserLocation) {
+        followUserLocation = false;
+        updateFollowButtonState();
+      }
+    });
+  }
+  
+  if (fullMap) {
+    fullMap.on('dragstart', function() {
+      // User is manually panning, disable follow mode
+      if (followUserLocation) {
+        followUserLocation = false;
+        updateFollowButtonState();
+      }
+    });
   }
 }
 
