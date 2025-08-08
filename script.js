@@ -1061,9 +1061,9 @@ async function performScanFromCanvas(canvas) {
     finalLat = geo.lat || 'Not Found';
     finalLng = geo.lng || 'Not Found';
     
-    if (geo.lat && geo.lng) {
-      address = await reverseGeocode(geo.lat, geo.lng);
-    }
+  if (geo.lat && geo.lng) {
+    address = await reverseGeocode(geo.lat, geo.lng);
+  }
     
     if (!address) {
       address = parsed.address || 'Not Found';
@@ -1688,6 +1688,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const mapExpandBtn = document.getElementById('mapExpandBtn');
   const fullMapOverlay = document.getElementById('fullMapOverlay');
   const mapCloseBtn = document.getElementById('mapCloseBtn');
+  const requestLocationBtn = document.getElementById('requestLocationBtn');
 
   if (mapExpandBtn && fullMapOverlay) {
     mapExpandBtn.addEventListener('click', function() {
@@ -1717,35 +1718,186 @@ document.addEventListener('DOMContentLoaded', function() {
     optimizeRouteBtn.addEventListener('click', optimizeRoute);
   }
 
-  // Update user location when GPS position changes
-  if (navigator.geolocation) {
-    navigator.geolocation.watchPosition(
-      function(position) {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const heading = position.coords.heading;
-        
-        updateUserLocation(lat, lng, heading);
-        
-        // Update global current location
-        currentLocation.lat = lat;
-        currentLocation.lng = lng;
-      },
-      function(error) {
-        console.log('Geolocation error:', error);
-        const mapStatus = document.getElementById('mapStatus');
-        if (mapStatus) {
-          mapStatus.textContent = '📍 Location unavailable';
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 30000,
-        timeout: 10000
-      }
-    );
+  // Manual location request button
+  if (requestLocationBtn) {
+    requestLocationBtn.addEventListener('click', function() {
+      requestLocationPermission();
+    });
   }
+
+  // iOS Safari location fix - request permission first
+  requestLocationPermission();
 });
+
+// Request location permission and handle iOS Safari issues
+async function requestLocationPermission() {
+  const mapStatus = document.getElementById('mapStatus');
+  
+  if (!navigator.geolocation) {
+    if (mapStatus) mapStatus.textContent = '📍 Geolocation not supported';
+    console.log('Geolocation not supported');
+    return;
+  }
+
+  // Update status to show we're requesting location
+  if (mapStatus) mapStatus.textContent = '📍 Requesting location...';
+
+  // iOS Safari requires HTTPS and user interaction for location
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSecure = location.protocol === 'https:' || location.hostname === 'localhost';
+  
+  if (isIOS && !isSecure) {
+    if (mapStatus) mapStatus.textContent = '📍 HTTPS required for location on iOS';
+    console.log('iOS requires HTTPS for geolocation');
+    return;
+  }
+
+  // First try to get current position once to test permissions
+  try {
+    const position = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        resolve,
+        reject,
+        {
+          enableHighAccuracy: false, // Start with less accurate for faster response
+          maximumAge: 60000, // Accept cached position up to 1 minute
+          timeout: 15000 // Longer timeout for iOS
+        }
+      );
+    });
+
+    // Success! Update location immediately
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    const heading = position.coords.heading;
+    
+    updateUserLocation(lat, lng, heading);
+    currentLocation.lat = lat;
+    currentLocation.lng = lng;
+
+    if (mapStatus) mapStatus.textContent = '📍 Location found';
+    console.log('Initial location obtained:', lat, lng);
+
+    // Now start watching position with better accuracy
+    startLocationWatching();
+
+  } catch (error) {
+    console.log('Geolocation error:', error);
+    handleLocationError(error);
+  }
+}
+
+// Start continuous location watching after initial success
+function startLocationWatching() {
+  const watchId = navigator.geolocation.watchPosition(
+    function(position) {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      const heading = position.coords.heading;
+      
+      updateUserLocation(lat, lng, heading);
+      currentLocation.lat = lat;
+      currentLocation.lng = lng;
+      
+      const mapStatus = document.getElementById('mapStatus');
+      if (mapStatus) mapStatus.textContent = '📍 Location tracking';
+    },
+    function(error) {
+      console.log('Watch position error:', error);
+      handleLocationError(error);
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 30000,
+      timeout: 20000 // Longer timeout for iOS
+    }
+  );
+
+  // Store watch ID for potential cleanup
+  window.locationWatchId = watchId;
+}
+
+// Handle different types of location errors
+function handleLocationError(error) {
+  const mapStatus = document.getElementById('mapStatus');
+  const requestLocationBtn = document.getElementById('requestLocationBtn');
+  let message = '📍 Location unavailable';
+
+  switch(error.code) {
+    case error.PERMISSION_DENIED:
+      message = '📍 Tap 📍 to enable location';
+      console.log('Location permission denied');
+      // Show manual request button
+      if (requestLocationBtn) requestLocationBtn.style.display = 'flex';
+      // Show instructions for enabling location
+      showLocationInstructions();
+      break;
+    case error.POSITION_UNAVAILABLE:
+      message = '📍 Location unavailable';
+      console.log('Location information unavailable');
+      if (requestLocationBtn) requestLocationBtn.style.display = 'flex';
+      break;
+    case error.TIMEOUT:
+      message = '📍 Location timeout - tap 📍 to retry';
+      console.log('Location request timed out');
+      if (requestLocationBtn) requestLocationBtn.style.display = 'flex';
+      // Retry with less accuracy
+      retryLocationWithLowerAccuracy();
+      break;
+    default:
+      message = '📍 Location error - tap 📍 to retry';
+      console.log('Unknown location error:', error);
+      if (requestLocationBtn) requestLocationBtn.style.display = 'flex';
+      break;
+  }
+
+  if (mapStatus) mapStatus.textContent = message;
+}
+
+// Retry location with lower accuracy settings
+function retryLocationWithLowerAccuracy() {
+  console.log('Retrying location with lower accuracy...');
+  
+  navigator.geolocation.getCurrentPosition(
+    function(position) {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      const heading = position.coords.heading;
+      
+      updateUserLocation(lat, lng, heading);
+      currentLocation.lat = lat;
+      currentLocation.lng = lng;
+      
+      const mapStatus = document.getElementById('mapStatus');
+      if (mapStatus) mapStatus.textContent = '📍 Location found (low accuracy)';
+      
+      // Start watching with lower accuracy
+      startLocationWatching();
+    },
+    function(error) {
+      console.log('Retry also failed:', error);
+      const mapStatus = document.getElementById('mapStatus');
+      if (mapStatus) mapStatus.textContent = '📍 Unable to get location';
+    },
+    {
+      enableHighAccuracy: false,
+      maximumAge: 300000, // 5 minutes
+      timeout: 30000
+    }
+  );
+}
+
+// Show instructions for enabling location on iOS
+function showLocationInstructions() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  
+  if (isIOS) {
+    // Create a temporary alert for iOS users
+    setTimeout(() => {
+      alert('To enable location:\n\n1. Go to Settings > Privacy & Security > Location Services\n2. Turn on Location Services\n3. Find Safari in the list\n4. Select "While Using App"\n5. Refresh this page');
+    }, 1000);
+  }
+}
 
 // Make functions globally available
 window.removeRoutePoint = removeRoutePoint; 
