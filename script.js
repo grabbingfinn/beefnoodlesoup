@@ -1902,13 +1902,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
   if (mapExpandBtn && fullMapOverlay) {
     mapExpandBtn.addEventListener('click', function() {
+      console.log('Opening full map overlay');
       fullMapOverlay.classList.remove('hidden');
+      
+      // Force scroll to top and lock body scrolling
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      
       // Invalidate size after animation
       setTimeout(() => {
         if (fullMap) {
           fullMap.invalidateSize();
           // Ensure user location is visible on full map
           syncUserLocationToFullMap();
+        }
+        
+        // Debug: Check if close button is visible
+        const closeBtn = document.getElementById('mapCloseBtn');
+        if (closeBtn) {
+          const rect = closeBtn.getBoundingClientRect();
+          console.log('Close button position:', {
+            top: rect.top,
+            right: rect.right,
+            width: rect.width,
+            height: rect.height,
+            visible: rect.width > 0 && rect.height > 0
+          });
         }
       }, 300);
     });
@@ -1920,6 +1939,10 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       e.stopPropagation();
       fullMapOverlay.classList.add('hidden');
+      
+      // Restore body scrolling
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     });
     
     // Also add touch event for mobile
@@ -1928,6 +1951,10 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       e.stopPropagation();
       fullMapOverlay.classList.add('hidden');
+      
+      // Restore body scrolling
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
     });
     
     console.log('Map close button event listeners added');
