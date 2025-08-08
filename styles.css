@@ -1009,7 +1009,14 @@ th:nth-child(9), td:nth-child(9) { width: 100px; }  /* ACTIONS */
       opacity: 0.9;
     }
 
-    .map-expand-btn {
+    .map-header-buttons {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .map-expand-btn,
+    .map-location-btn {
       background: rgba(255, 255, 255, 0.2);
       border: none;
       color: white;
@@ -1024,9 +1031,14 @@ th:nth-child(9), td:nth-child(9) { width: 100px; }  /* ACTIONS */
       justify-content: center;
     }
 
-    .map-expand-btn:hover {
+    .map-expand-btn:hover,
+    .map-location-btn:hover {
       background: rgba(255, 255, 255, 0.3);
       transform: scale(1.05);
+    }
+
+    .map-location-btn {
+      font-size: 14px;
     }
 
     .mini-map {
