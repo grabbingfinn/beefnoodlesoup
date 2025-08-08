@@ -1446,45 +1446,161 @@ let routePoints = [];
 let routeLine = null;
 let teamMarkers = [];
 
-// Initialize maps
+// Initialize maps with fallback tile sources
 function initializeMaps() {
+  console.log('Initializing maps...');
+  
+  // Check if Leaflet is loaded
+  if (typeof L === 'undefined') {
+    console.error('Leaflet library not loaded');
+    setTimeout(initializeMaps, 2000); // Retry after 2 seconds
+    return;
+  }
+  
+  // Check if map containers exist
+  const miniMapContainer = document.getElementById('miniMap');
+  const fullMapContainer = document.getElementById('fullMap');
+  
+  if (!miniMapContainer) {
+    console.error('Mini map container not found');
+    return;
+  }
+  
+  if (!fullMapContainer) {
+    console.error('Full map container not found');
+    return;
+  }
+  
+  console.log('Map containers found, Leaflet loaded');
+  
   // Initialize mini map
   if (!miniMap) {
-    miniMap = L.map('miniMap', {
-      zoomControl: false,
-      attributionControl: false,
-      dragging: false,
-      scrollWheelZoom: false,
-      doubleClickZoom: false,
-      touchZoom: false
-    }).setView([1.3521, 103.8198], 12); // Singapore center
+    try {
+      miniMap = L.map('miniMap', {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        touchZoom: false
+      }).setView([1.3521, 103.8198], 12); // Singapore center
 
-    // Use OneMap Singapore tiles
-    L.tileLayer('https://maps-{s}.onemap.sg/v3/Default/{z}/{x}/{y}.png', {
-      subdomains: ['a', 'b', 'c', 'd'],
-      attribution: '&copy; <a href="https://www.onemap.sg/">OneMap</a>',
-      maxZoom: 18
-    }).addTo(miniMap);
+      // Add tile layers with fallback
+      addTileLayersToMap(miniMap);
+      console.log('Mini map initialized successfully');
+      
+    } catch (error) {
+      console.error('Error initializing mini map:', error);
+      // Show error in UI
+      const mapStatus = document.getElementById('mapStatus');
+      if (mapStatus) mapStatus.textContent = '🗺️ Map loading error';
+    }
   }
 
   // Initialize full map
   if (!fullMap) {
-    fullMap = L.map('fullMap', {
-      zoomControl: true,
-      attributionControl: true
-    }).setView([1.3521, 103.8198], 12);
+    try {
+      fullMap = L.map('fullMap', {
+        zoomControl: true,
+        attributionControl: true
+      }).setView([1.3521, 103.8198], 12);
 
-    L.tileLayer('https://maps-{s}.onemap.sg/v3/Default/{z}/{x}/{y}.png', {
-      subdomains: ['a', 'b', 'c', 'd'],
-      attribution: '&copy; <a href="https://www.onemap.sg/">OneMap</a>',
-      maxZoom: 18
-    }).addTo(fullMap);
+      // Add tile layers with fallback
+      addTileLayersToMap(fullMap);
+      console.log('Full map initialized successfully');
 
-    // Add click handler for route planning
-    fullMap.on('click', function(e) {
-      addRoutePoint(e.latlng);
-    });
+      // Add click handler for route planning
+      fullMap.on('click', function(e) {
+        addRoutePoint(e.latlng);
+      });
+      
+    } catch (error) {
+      console.error('Error initializing full map:', error);
+    }
   }
+}
+
+// Add tile layers with multiple fallback sources
+function addTileLayersToMap(map) {
+  // Primary: OneMap Singapore (most accurate for Singapore)
+  const oneMapLayer = L.tileLayer('https://maps-{s}.onemap.sg/v3/Default/{z}/{x}/{y}.png', {
+    subdomains: ['a', 'b', 'c', 'd'],
+    attribution: '&copy; <a href="https://www.onemap.sg/">OneMap</a>',
+    maxZoom: 18,
+    errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+  });
+
+  // Fallback 1: OpenStreetMap (reliable worldwide)
+  const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19
+  });
+
+  // Fallback 2: CartoDB (clean, reliable)
+  const cartoLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    maxZoom: 19
+  });
+
+  // Try OneMap first, fallback to OSM if it fails
+  let currentLayer = oneMapLayer;
+  currentLayer.addTo(map);
+
+  // Mark map as loaded when tiles load successfully
+  currentLayer.on('load', function() {
+    console.log('Map tiles loaded successfully');
+    const mapContainer = map.getContainer();
+    if (mapContainer) {
+      mapContainer.classList.add('loaded');
+    }
+  });
+
+  // Handle tile load errors
+  currentLayer.on('tileerror', function(error) {
+    console.log('OneMap tiles failed, switching to OpenStreetMap');
+    map.removeLayer(currentLayer);
+    currentLayer = osmLayer;
+    currentLayer.addTo(map);
+    
+    // Mark as loaded when fallback works
+    currentLayer.on('load', function() {
+      console.log('OpenStreetMap tiles loaded successfully');
+      const mapContainer = map.getContainer();
+      if (mapContainer) {
+        mapContainer.classList.add('loaded');
+      }
+    });
+    
+    // If OSM also fails, try CartoDB
+    currentLayer.on('tileerror', function(error) {
+      console.log('OpenStreetMap tiles failed, switching to CartoDB');
+      map.removeLayer(currentLayer);
+      currentLayer = cartoLayer;
+      currentLayer.addTo(map);
+      
+      // Mark as loaded when final fallback works
+      currentLayer.on('load', function() {
+        console.log('CartoDB tiles loaded successfully');
+        const mapContainer = map.getContainer();
+        if (mapContainer) {
+          mapContainer.classList.add('loaded');
+        }
+      });
+    });
+  });
+
+  // Force map to refresh and invalidate size multiple times
+  setTimeout(() => {
+    map.invalidateSize();
+  }, 100);
+  
+  setTimeout(() => {
+    map.invalidateSize();
+  }, 500);
+  
+  setTimeout(() => {
+    map.invalidateSize();
+  }, 1000);
 }
 
 // Update user location on both maps
@@ -1681,8 +1797,17 @@ function clearRoute() {
 
 // Map UI event handlers
 document.addEventListener('DOMContentLoaded', function() {
-  // Initialize maps when page loads
-  setTimeout(initializeMaps, 500);
+  // Show loading indicator
+  const mapStatus = document.getElementById('mapStatus');
+  if (mapStatus) mapStatus.textContent = '🗺️ Loading maps...';
+  
+  // Initialize maps when page loads with longer delay for mobile
+  setTimeout(initializeMaps, 1000);
+  
+  // Also try to initialize after Leaflet is fully loaded
+  if (typeof L !== 'undefined') {
+    setTimeout(initializeMaps, 1500);
+  }
 
   // Map expand button
   const mapExpandBtn = document.getElementById('mapExpandBtn');
