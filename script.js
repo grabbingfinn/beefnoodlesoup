@@ -144,14 +144,27 @@ function renderTable() {
     
     // Add table cells with data including remarks
     const remarksValue = scan.remarks || '';
+    
+    // Format Lat-Long as a single field
+    const latLong = (scan.lat && scan.lng && scan.lat !== 'Not Found' && scan.lng !== 'Not Found') 
+      ? `${scan.lat}, ${scan.lng}` 
+      : 'Not Found';
+    
+    // Parse address components (for now, use placeholders until address parsing is implemented)
+    const houseNo = scan.houseNo || 'Not Found';
+    const street = scan.street || 'Not Found';
+    const building = scan.building || 'Not Found';
+    const postcode = scan.postcode || 'Not Found';
+    
     tr.innerHTML = `
       <td>${idx + 1}</td>
       <td>${scan.storeName}</td>
+      <td>${latLong}</td>
+      <td>${houseNo}</td>
+      <td>${street}</td>
       <td>${scan.unitNumber}</td>
-      <td>${scan.address ?? 'Not Found'}</td>
-      <td>${scan.lat ?? 'Not Found'}</td>
-      <td>${scan.lng ?? 'Not Found'}</td>
-      <td>${scan.category}</td>
+      <td>${building}</td>
+      <td>${postcode}</td>
       <td class="remarks-cell">
         <input type="text" class="remarks-input" value="${remarksValue}" 
                placeholder="Add remarks..." data-index="${idx}">
@@ -215,16 +228,8 @@ function editRow(index) {
       <h3>Edit Scan #${index + 1}</h3>
       <div class="edit-form">
         <div class="edit-field">
-          <label>Store Name:</label>
+          <label>POI Name:</label>
           <input type="text" id="edit-storeName" value="${scan.storeName}">
-        </div>
-        <div class="edit-field">
-          <label>Unit Number:</label>
-          <input type="text" id="edit-unitNumber" value="${scan.unitNumber}">
-        </div>
-        <div class="edit-field">
-          <label>Address:</label>
-          <input type="text" id="edit-address" value="${scan.address || ''}">
         </div>
         <div class="edit-field">
           <label>Latitude:</label>
@@ -235,8 +240,24 @@ function editRow(index) {
           <input type="text" id="edit-lng" value="${scan.lng || ''}">
         </div>
         <div class="edit-field">
-          <label>Category:</label>
-          <input type="text" id="edit-category" value="${scan.category}">
+          <label>House_No:</label>
+          <input type="text" id="edit-houseNo" value="${scan.houseNo || ''}">
+        </div>
+        <div class="edit-field">
+          <label>Street:</label>
+          <input type="text" id="edit-street" value="${scan.street || ''}">
+        </div>
+        <div class="edit-field">
+          <label>Unit:</label>
+          <input type="text" id="edit-unitNumber" value="${scan.unitNumber}">
+        </div>
+        <div class="edit-field">
+          <label>Building:</label>
+          <input type="text" id="edit-building" value="${scan.building || ''}">
+        </div>
+        <div class="edit-field">
+          <label>Postcode:</label>
+          <input type="text" id="edit-postcode" value="${scan.postcode || ''}">
         </div>
         <div class="edit-field">
           <label>Remarks:</label>
@@ -265,11 +286,13 @@ function editRow(index) {
     scans[index] = {
       ...scan,
       storeName: document.getElementById('edit-storeName').value,
-      unitNumber: document.getElementById('edit-unitNumber').value,
-      address: document.getElementById('edit-address').value,
       lat: document.getElementById('edit-lat').value,
       lng: document.getElementById('edit-lng').value,
-      category: document.getElementById('edit-category').value,
+      houseNo: document.getElementById('edit-houseNo').value,
+      street: document.getElementById('edit-street').value,
+      unitNumber: document.getElementById('edit-unitNumber').value,
+      building: document.getElementById('edit-building').value,
+      postcode: document.getElementById('edit-postcode').value,
       remarks: document.getElementById('edit-remarks').value
     };
     
@@ -322,11 +345,24 @@ document.getElementById('exportBtn').addEventListener('click', () => {
     alert('No data to export');
     return;
   }
-  const headers = ['Store Name','Unit','Address','Lat','Lng','Category','Remarks'];
+  const headers = ['POI Name','Lat-Long','House_No','Street','Unit','Building','Postcode','Remarks'];
   const csvRows = [headers.join(',')];
   scans.forEach(s => {
-    const row = [s.storeName, s.unitNumber, s.address, s.lat, s.lng, s.category, s.remarks || '']
-      .map(v => '"' + (v || '').replace(/"/g,'""') + '"').join(',');
+    // Format Lat-Long as a single field
+    const latLong = (s.lat && s.lng && s.lat !== 'Not Found' && s.lng !== 'Not Found') 
+      ? `${s.lat}, ${s.lng}` 
+      : 'Not Found';
+    
+    const row = [
+      s.storeName, 
+      latLong,
+      s.houseNo || 'Not Found', 
+      s.street || 'Not Found', 
+      s.unitNumber, 
+      s.building || 'Not Found', 
+      s.postcode || 'Not Found', 
+      s.remarks || ''
+    ].map(v => '"' + (v || '').replace(/"/g,'""') + '"').join(',');
     csvRows.push(row);
   });
   const blob = new Blob([csvRows.join('\n')], {type:'text/csv'});
