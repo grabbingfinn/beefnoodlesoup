@@ -273,6 +273,7 @@
       gap: 12px;
       margin-bottom: 24px;
       align-items: stretch;
+      flex-wrap: wrap;
     }
 
     #storeSearchInput {
@@ -295,6 +296,31 @@
 
     #storeSearchInput::placeholder {
       color: var(--text-light);
+    }
+
+    .photo-toggle {
+      background: var(--primary) !important;
+      color: white !important;
+      font-size: 13px;
+      white-space: nowrap;
+      min-width: 130px;
+      transition: all 0.2s ease;
+      border: 2px solid var(--primary) !important;
+    }
+
+    .photo-toggle.disabled {
+      background: #6b7280 !important;
+      border-color: #6b7280 !important;
+      opacity: 0.8;
+    }
+
+    .photo-toggle:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 177, 79, 0.3);
+    }
+
+    .photo-toggle.disabled:hover {
+      box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
     }
     
     .btn {

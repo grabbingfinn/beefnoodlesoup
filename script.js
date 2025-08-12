@@ -1106,49 +1106,99 @@ async function captureAndSavePhoto(canvas) {
       canvas.toBlob(resolve, 'image/jpeg', 0.9);
     });
     
-    // Create download link to save to gallery
-    const url = URL.createObjectURL(blob);
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
     const filename = `bnsVision_scan_${timestamp}.jpg`;
     
-    // Create temporary download link
+    // Try Web Share API first (mobile native sharing)
+    if (navigator.share && navigator.canShare) {
+      const file = new File([blob], filename, { type: 'image/jpeg' });
+      
+      if (navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: 'bnsVision Scan Photo',
+            text: `Store scan captured at ${new Date().toLocaleString()}`,
+            files: [file]
+          });
+          
+          console.log('Photo shared successfully via Web Share API');
+          showPhotoSavedNotification('📤 Photo shared successfully');
+          return true;
+        } catch (shareError) {
+          if (shareError.name !== 'AbortError') {
+            console.log('Web Share failed, falling back to download:', shareError);
+          } else {
+            // User cancelled share dialog
+            console.log('User cancelled share dialog');
+            return false;
+          }
+        }
+      }
+    }
+    
+    // Fallback to download with improved UX
+    const url = URL.createObjectURL(blob);
+    
+    // Create temporary download link with better attributes
     const downloadLink = document.createElement('a');
     downloadLink.href = url;
     downloadLink.download = filename;
     downloadLink.style.display = 'none';
     
-    // Add to DOM, click, and remove
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
+    // For mobile Safari, try to trigger download more smoothly
+    if (/iPhone|iPad|iPod|Safari/i.test(navigator.userAgent)) {
+      // Add slight delay to ensure flash animation starts
+      setTimeout(() => {
+        document.body.appendChild(downloadLink);
+        
+        // Use both click and programmatic trigger
+        const event = new MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          view: window
+        });
+        downloadLink.dispatchEvent(event);
+        
+        document.body.removeChild(downloadLink);
+      }, 100);
+    } else {
+      // Standard download for other browsers
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
     
     // Clean up the blob URL after a short delay
     setTimeout(() => {
       URL.revokeObjectURL(url);
     }, 1000);
     
-    console.log(`Photo saved: ${filename}`);
+    console.log(`Photo download initiated: ${filename}`);
     
-    // Show success notification
-    showPhotoSavedNotification();
+    // Show instruction notification for first-time users
+    showPhotoSavedNotification('📸 Tap "Download" to save photo');
     
     return true;
   } catch (error) {
     console.error('Error saving photo:', error);
+    showPhotoSavedNotification('❌ Failed to save photo', true);
     return false;
   }
 }
 
 // Helper function to show photo saved notification
-function showPhotoSavedNotification() {
+function showPhotoSavedNotification(message = '📸 Photo saved to gallery', isError = false) {
   // Create notification element
   const notification = document.createElement('div');
+  
+  const backgroundColor = isError ? 'rgba(220, 38, 38, 0.95)' : 'rgba(0, 177, 79, 0.95)';
+  
   notification.style.cssText = `
     position: fixed;
     top: 80px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0, 177, 79, 0.95);
+    background: ${backgroundColor};
     color: white;
     padding: 12px 20px;
     border-radius: 25px;
@@ -1156,12 +1206,14 @@ function showPhotoSavedNotification() {
     font-weight: 500;
     z-index: 9998;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    animation: slideInOut 3s ease-in-out;
+    animation: slideInOut 4s ease-in-out;
     pointer-events: none;
     backdrop-filter: blur(10px);
+    max-width: 280px;
+    text-align: center;
   `;
   
-  notification.innerHTML = '📸 Photo saved to gallery';
+  notification.innerHTML = message;
   
   // Add slide animation CSS if not already present
   if (!document.querySelector('#photoNotificationStyle')) {
@@ -1170,8 +1222,8 @@ function showPhotoSavedNotification() {
     style.textContent = `
       @keyframes slideInOut {
         0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-        15% { opacity: 1; transform: translateX(-50%) translateY(0); }
-        85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        12% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        88% { opacity: 1; transform: translateX(-50%) translateY(0); }
         100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
       }
     `;
@@ -1185,7 +1237,7 @@ function showPhotoSavedNotification() {
     if (notification.parentNode) {
       notification.parentNode.removeChild(notification);
     }
-  }, 3000);
+  }, 4000);
 }
 
 // Helper function to show photo capture flash effect
@@ -1247,13 +1299,20 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  // Capture and save photo to gallery (parallel with scanning)
-  const photoSaved = await captureAndSavePhoto(canvas);
+  // Check if photo capture is enabled (default: true)
+  const photoCaptureEnabled = localStorage.getItem('photoCaptureEnabled') !== 'false';
   
-  if (photoSaved) {
-    console.log('✅ Photo captured and saved to gallery');
+  if (photoCaptureEnabled) {
+    // Capture and save photo to gallery (parallel with scanning)
+    const photoSaved = await captureAndSavePhoto(canvas);
+    
+    if (photoSaved) {
+      console.log('✅ Photo captured and saved to gallery');
+    } else {
+      console.warn('⚠️ Failed to save photo to gallery');
+    }
   } else {
-    console.warn('⚠️ Failed to save photo to gallery');
+    console.log('📸 Photo capture disabled by user');
   }
 
   // Continue with normal scanning process
@@ -1276,13 +1335,18 @@ if (uploadBtn && imageInput) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0);
       
-      // Capture and save photo to gallery for uploaded images too
-      const photoSaved = await captureAndSavePhoto(canvas);
+      // Check if photo capture is enabled for uploaded images too
+      const photoCaptureEnabled = localStorage.getItem('photoCaptureEnabled') !== 'false';
       
-      if (photoSaved) {
-        console.log('✅ Uploaded photo processed and saved to gallery');
-      } else {
-        console.warn('⚠️ Failed to save uploaded photo to gallery');
+      if (photoCaptureEnabled) {
+        // Capture and save photo to gallery for uploaded images too
+        const photoSaved = await captureAndSavePhoto(canvas);
+        
+        if (photoSaved) {
+          console.log('✅ Uploaded photo processed and saved to gallery');
+        } else {
+          console.warn('⚠️ Failed to save uploaded photo to gallery');
+        }
       }
       
       await performScanFromCanvas(canvas);
@@ -2113,6 +2177,36 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Map close button event listeners added');
   } else {
     console.error('Map close button or overlay not found:', { mapCloseBtn, fullMapOverlay });
+  }
+
+  // Photo capture toggle functionality
+  const photoCaptureToggle = document.getElementById('photoCaptureToggle');
+  if (photoCaptureToggle) {
+    // Initialize toggle state
+    const updateToggleButton = () => {
+      const isEnabled = localStorage.getItem('photoCaptureEnabled') !== 'false';
+      photoCaptureToggle.textContent = isEnabled ? '📸 Photo: ON' : '📸 Photo: OFF';
+      photoCaptureToggle.classList.toggle('disabled', !isEnabled);
+      photoCaptureToggle.title = isEnabled ? 'Click to disable photo capture' : 'Click to enable photo capture';
+    };
+    
+    // Set initial state
+    updateToggleButton();
+    
+    // Toggle functionality
+    photoCaptureToggle.addEventListener('click', () => {
+      const currentState = localStorage.getItem('photoCaptureEnabled') !== 'false';
+      const newState = !currentState;
+      
+      localStorage.setItem('photoCaptureEnabled', newState.toString());
+      updateToggleButton();
+      
+      // Show feedback
+      const message = newState ? '📸 Photo capture enabled' : '📸 Photo capture disabled';
+      showPhotoSavedNotification(message);
+      
+      console.log(`Photo capture ${newState ? 'enabled' : 'disabled'}`);
+    });
   }
 
   // Add backup close methods
