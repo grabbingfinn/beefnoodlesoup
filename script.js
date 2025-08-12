@@ -1095,6 +1095,139 @@ async function performScanFromCanvas(canvas) {
   progressBar.style.display = 'none';
 }
 
+// Helper function to capture and save photo to gallery
+async function captureAndSavePhoto(canvas) {
+  try {
+    // Show visual feedback
+    showPhotoFlash();
+    
+    // Convert canvas to blob with high quality
+    const blob = await new Promise(resolve => {
+      canvas.toBlob(resolve, 'image/jpeg', 0.9);
+    });
+    
+    // Create download link to save to gallery
+    const url = URL.createObjectURL(blob);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const filename = `bnsVision_scan_${timestamp}.jpg`;
+    
+    // Create temporary download link
+    const downloadLink = document.createElement('a');
+    downloadLink.href = url;
+    downloadLink.download = filename;
+    downloadLink.style.display = 'none';
+    
+    // Add to DOM, click, and remove
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    
+    // Clean up the blob URL after a short delay
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 1000);
+    
+    console.log(`Photo saved: ${filename}`);
+    
+    // Show success notification
+    showPhotoSavedNotification();
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving photo:', error);
+    return false;
+  }
+}
+
+// Helper function to show photo saved notification
+function showPhotoSavedNotification() {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 177, 79, 0.95);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 9998;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    animation: slideInOut 3s ease-in-out;
+    pointer-events: none;
+    backdrop-filter: blur(10px);
+  `;
+  
+  notification.innerHTML = '📸 Photo saved to gallery';
+  
+  // Add slide animation CSS if not already present
+  if (!document.querySelector('#photoNotificationStyle')) {
+    const style = document.createElement('style');
+    style.id = 'photoNotificationStyle';
+    style.textContent = `
+      @keyframes slideInOut {
+        0% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+        15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  document.body.appendChild(notification);
+  
+  // Remove notification after animation
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 3000);
+}
+
+// Helper function to show photo capture flash effect
+function showPhotoFlash() {
+  // Create flash overlay
+  const flashOverlay = document.createElement('div');
+  flashOverlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: white;
+    z-index: 9999;
+    pointer-events: none;
+    animation: photoFlash 0.3s ease-out;
+  `;
+  
+  // Add flash animation CSS if not already present
+  if (!document.querySelector('#photoFlashStyle')) {
+    const style = document.createElement('style');
+    style.id = 'photoFlashStyle';
+    style.textContent = `
+      @keyframes photoFlash {
+        0% { opacity: 0; }
+        50% { opacity: 0.8; }
+        100% { opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  document.body.appendChild(flashOverlay);
+  
+  // Remove flash overlay after animation
+  setTimeout(() => {
+    if (flashOverlay.parentNode) {
+      flashOverlay.parentNode.removeChild(flashOverlay);
+    }
+  }, 300);
+}
+
 // Scan button handler
 document.getElementById('scanBtn').addEventListener('click', async () => {
   if (!video.videoWidth) {
@@ -1114,6 +1247,16 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+  // Capture and save photo to gallery (parallel with scanning)
+  const photoSaved = await captureAndSavePhoto(canvas);
+  
+  if (photoSaved) {
+    console.log('✅ Photo captured and saved to gallery');
+  } else {
+    console.warn('⚠️ Failed to save photo to gallery');
+  }
+
+  // Continue with normal scanning process
   await performScanFromCanvas(canvas);
 });
 
@@ -1121,7 +1264,7 @@ document.getElementById('scanBtn').addEventListener('click', async () => {
 if (uploadBtn && imageInput) {
   uploadBtn.addEventListener('click', () => imageInput.click());
 
-  imageInput.addEventListener('change', e => {
+  imageInput.addEventListener('change', async e => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
@@ -1132,6 +1275,16 @@ if (uploadBtn && imageInput) {
       canvas.height = img.naturalHeight;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0);
+      
+      // Capture and save photo to gallery for uploaded images too
+      const photoSaved = await captureAndSavePhoto(canvas);
+      
+      if (photoSaved) {
+        console.log('✅ Uploaded photo processed and saved to gallery');
+      } else {
+        console.warn('⚠️ Failed to save uploaded photo to gallery');
+      }
+      
       await performScanFromCanvas(canvas);
       URL.revokeObjectURL(img.src);
     };
