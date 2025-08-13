@@ -80,6 +80,24 @@ const zoomLevelSpan = document.getElementById('zoomLevel');
 
 // Persistent scans storage
 let scans = [];
+
+// Migrate existing data to include photo fields if missing
+function migrateScansData() {
+  scans = scans.map(scan => {
+    // Ensure all new fields exist with default values
+    return {
+      ...scan,
+      photoData: scan.photoData || null,
+      timestamp: scan.timestamp || new Date().toISOString(),
+      photoFilename: scan.photoFilename || null,
+      houseNo: scan.houseNo || 'Not Found',
+      street: scan.street || 'Not Found', 
+      building: scan.building || 'Not Found',
+      postcode: scan.postcode || 'Not Found'
+    };
+  });
+  saveScans();
+}
 // Note: openaiApiKey is defined later, but we need it before using getOpenAIClient().
 // We will forward-declare it here and assign when loaded below.
 let openaiApiKey;
@@ -123,6 +141,11 @@ try {
   scans = JSON.parse(localStorage.getItem('scans') || '[]');
 } catch (_) { scans = []; }
 
+// Migrate existing data to new structure
+if (scans.length > 0) {
+  migrateScansData();
+}
+
 renderTable();
 
 function saveScans() {
@@ -136,7 +159,14 @@ function renderTable() {
   clearSearchHighlights();
   
   tableBody.innerHTML = '';
+  console.log('Rendering table with', scans.length, 'scans');
   scans.forEach((scan, idx) => {
+    console.log(`Rendering scan ${idx}:`, {
+      storeName: scan.storeName,
+      hasPhoto: !!scan.photoData,
+      keys: Object.keys(scan)
+    });
+    
     // Create the main table row
     const tr = document.createElement('tr');
     tr.className = 'table-row';
@@ -156,20 +186,25 @@ function renderTable() {
     const building = scan.building || 'Not Found';
     const postcode = scan.postcode || 'Not Found';
     
-    // Create photo cell content
-    const photoCell = scan.photoData ? `
-      <div class="photo-cell">
-        <img src="${scan.photoData}" alt="Store photo" class="photo-thumbnail" data-index="${idx}" title="Click to enlarge">
-        <button class="photo-download-btn" data-index="${idx}" title="Download photo">⬇️</button>
-      </div>
-    ` : `
-      <div class="photo-cell">
-        <div class="no-photo">📷</div>
-        <span style="font-size: 9px; color: #999;">No photo</span>
-      </div>
-    `;
+    // Create photo cell content - ensure it's always a complete cell
+    let photoCell;
+    if (scan.photoData && scan.photoData.trim() !== '') {
+      photoCell = `
+        <div class="photo-cell">
+          <img src="${scan.photoData}" alt="Store photo" class="photo-thumbnail" data-index="${idx}" title="Click to enlarge">
+          <button class="photo-download-btn" data-index="${idx}" title="Download photo">⬇️</button>
+        </div>
+      `;
+    } else {
+      photoCell = `
+        <div class="photo-cell">
+          <div class="no-photo">📷</div>
+          <span style="font-size: 9px; color: #999;">No photo</span>
+        </div>
+      `;
+    }
 
-    tr.innerHTML = `
+    const rowHTML = `
       <td>${idx + 1}</td>
       <td>${photoCell}</td>
       <td>${scan.storeName}</td>
@@ -191,6 +226,9 @@ function renderTable() {
           🗑️ Delete
         </button>
       </td>`;
+    
+    console.log(`Row HTML for scan ${idx}:`, rowHTML.substring(0, 200) + '...');
+    tr.innerHTML = rowHTML;
     
     // Append row to table
     tableBody.appendChild(tr);
