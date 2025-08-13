@@ -156,8 +156,22 @@ function renderTable() {
     const building = scan.building || 'Not Found';
     const postcode = scan.postcode || 'Not Found';
     
+    // Create photo cell content
+    const photoCell = scan.photoData ? `
+      <div class="photo-cell">
+        <img src="${scan.photoData}" alt="Store photo" class="photo-thumbnail" data-index="${idx}" title="Click to enlarge">
+        <button class="photo-download-btn" data-index="${idx}" title="Download photo">⬇️</button>
+      </div>
+    ` : `
+      <div class="photo-cell">
+        <div class="no-photo">📷</div>
+        <span style="font-size: 9px; color: #999;">No photo</span>
+      </div>
+    `;
+
     tr.innerHTML = `
       <td>${idx + 1}</td>
+      <td>${photoCell}</td>
       <td>${scan.storeName}</td>
       <td>${latLong}</td>
       <td>${houseNo}</td>
@@ -212,6 +226,27 @@ function renderTable() {
       const index = parseInt(e.target.dataset.index);
       deleteRow(index);
     });
+
+    // Add event listeners for photo interactions
+    const photoThumbnail = tr.querySelector('.photo-thumbnail');
+    const photoDownloadBtn = tr.querySelector('.photo-download-btn');
+    
+    if (photoThumbnail) {
+      photoThumbnail.addEventListener('click', (e) => {
+        e.preventDefault();
+        const index = parseInt(e.target.dataset.index);
+        showPhotoModal(scans[index].photoData, scans[index].storeName);
+      });
+    }
+    
+    if (photoDownloadBtn) {
+      photoDownloadBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const index = parseInt(e.target.dataset.index);
+        downloadPhoto(scans[index]);
+      });
+    }
   });
 }
 
@@ -263,6 +298,15 @@ function editRow(index) {
           <label>Remarks:</label>
           <input type="text" id="edit-remarks" value="${scan.remarks || ''}">
         </div>
+        ${scan.photoData ? `
+        <div class="edit-field">
+          <label>Photo Preview:</label>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <img src="${scan.photoData}" alt="Scan photo" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 2px solid #e0e0e0;">
+            <button type="button" class="btn" onclick="showPhotoModal('${scan.photoData}', '${scan.storeName}')">🔍 View Full Size</button>
+          </div>
+        </div>
+        ` : '<div class="edit-field"><label>Photo:</label><span style="color: #999;">No photo captured</span></div>'}
         <div class="edit-actions">
           <button class="btn save-btn">💾 Save</button>
           <button class="btn cancel-btn">❌ Cancel</button>
@@ -325,6 +369,67 @@ function deleteRow(index) {
   }
 }
 
+// Show photo in enlarged modal
+function showPhotoModal(photoData, storeName) {
+  const modal = document.createElement('div');
+  modal.className = 'photo-modal';
+  modal.innerHTML = `
+    <div class="photo-modal-content">
+      <button class="photo-modal-close" title="Close">×</button>
+      <img src="${photoData}" alt="${storeName} photo">
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  const closeModal = () => {
+    document.body.removeChild(modal);
+  };
+  
+  // Close on button click
+  modal.querySelector('.photo-modal-close').addEventListener('click', closeModal);
+  
+  // Close on background click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      closeModal();
+    }
+  });
+  
+  // Close on Escape key
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      closeModal();
+      document.removeEventListener('keydown', handleKeyDown);
+    }
+  };
+  document.addEventListener('keydown', handleKeyDown);
+}
+
+// Download individual photo
+function downloadPhoto(scan) {
+  if (!scan.photoData) {
+    alert('No photo available for this scan');
+    return;
+  }
+  
+  try {
+    // Create download link
+    const link = document.createElement('a');
+    link.href = scan.photoData;
+    link.download = scan.photoFilename || `bnsVision_${scan.storeName || 'scan'}_photo.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Show success feedback
+    showPhotoSavedNotification('Photo downloaded successfully!', false);
+  } catch (error) {
+    console.error('Download failed:', error);
+    showPhotoSavedNotification('Download failed. Please try again.', true);
+  }
+}
+
 // Removed old swipe functionality - now using buttons
 
 // After renderTable definition add event listeners
@@ -345,7 +450,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
     alert('No data to export');
     return;
   }
-  const headers = ['POI Name','Lat-Long','House_No','Street','Unit','Building','Postcode','Remarks'];
+  const headers = ['POI Name','Lat-Long','House_No','Street','Unit','Building','Postcode','Remarks','Photo Available','Timestamp'];
   const csvRows = [headers.join(',')];
   scans.forEach(s => {
     // Format Lat-Long as a single field
@@ -361,7 +466,9 @@ document.getElementById('exportBtn').addEventListener('click', () => {
       s.unitNumber, 
       s.building || 'Not Found', 
       s.postcode || 'Not Found', 
-      s.remarks || ''
+      s.remarks || '',
+      s.photoData ? 'Yes' : 'No',
+      s.timestamp || 'Unknown'
     ].map(v => '"' + (v || '').replace(/"/g,'""') + '"').join(',');
     csvRows.push(row);
   });
@@ -373,6 +480,76 @@ document.getElementById('exportBtn').addEventListener('click', () => {
   document.body.appendChild(a);
   a.click();
   setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+});
+
+// Download All Photos functionality
+document.getElementById('downloadAllPhotosBtn').addEventListener('click', async () => {
+  const photosWithData = scans.filter(scan => scan.photoData);
+  
+  if (photosWithData.length === 0) {
+    alert('No photos available to download');
+    return;
+  }
+  
+  if (photosWithData.length === 1) {
+    // If only one photo, just download it directly
+    downloadPhoto(photosWithData[0]);
+    return;
+  }
+  
+  // For multiple photos, create a ZIP file
+  try {
+    // Show progress
+    const originalText = document.getElementById('downloadAllPhotosBtn').textContent;
+    document.getElementById('downloadAllPhotosBtn').textContent = '📦 Preparing...';
+    document.getElementById('downloadAllPhotosBtn').disabled = true;
+    
+    // Import JSZip dynamically
+    if (!window.JSZip) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      document.head.appendChild(script);
+      
+      await new Promise((resolve, reject) => {
+        script.onload = resolve;
+        script.onerror = reject;
+      });
+    }
+    
+    const zip = new JSZip();
+    const timestamp = new Date().toISOString().slice(0, 10);
+    
+    // Add each photo to the zip
+    photosWithData.forEach((scan, index) => {
+      const filename = scan.photoFilename || `bnsVision_${scan.storeName || `scan_${index + 1}`}_photo.jpg`;
+      // Convert data URL to blob data
+      const base64Data = scan.photoData.split(',')[1];
+      zip.file(filename, base64Data, {base64: true});
+    });
+    
+    // Generate ZIP file
+    document.getElementById('downloadAllPhotosBtn').textContent = '📦 Creating ZIP...';
+    const zipBlob = await zip.generateAsync({type: 'blob'});
+    
+    // Download the ZIP
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(zipBlob);
+    link.download = `bnsVision_all_photos_${timestamp}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+    
+    showPhotoSavedNotification(`Successfully downloaded ${photosWithData.length} photos as ZIP file!`, false);
+    
+  } catch (error) {
+    console.error('Bulk download failed:', error);
+    showPhotoSavedNotification('Failed to create photo archive. Try downloading photos individually.', true);
+  } finally {
+    // Reset button
+    document.getElementById('downloadAllPhotosBtn').textContent = originalText;
+    document.getElementById('downloadAllPhotosBtn').disabled = false;
+  }
 });
 
 // --- Manual store location search ---
@@ -414,7 +591,11 @@ function performTableSearch() {
       scan.unitNumber,
       scan.address,
       scan.category,
-      scan.remarks
+      scan.remarks,
+      scan.houseNo,
+      scan.street,
+      scan.building,
+      scan.postcode
     ];
     
     for (const field of searchableFields) {
@@ -1106,8 +1287,19 @@ async function performScanFromCanvas(canvas) {
     }
   }
 
+  // Store photo data with the scan
+  const photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+  const timestamp = new Date().toISOString();
+
   const info = Object.assign(
-    { lat: finalLat, lng: finalLng, address: address },
+    { 
+      lat: finalLat, 
+      lng: finalLng, 
+      address: address,
+      photoData: photoDataUrl,
+      timestamp: timestamp,
+      photoFilename: `bnsVision_${parsed.storeName || 'scan'}_${timestamp.replace(/[:.]/g, '-').slice(0, -5)}.jpg`
+    },
     parsed
   );
 
